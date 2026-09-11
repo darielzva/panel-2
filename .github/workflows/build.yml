@@ -1,0 +1,30 @@
+name: Build DARK dylib
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Theos
+        uses: randomblock1/theos-action@v1
+
+      - name: Compile Project
+        run: make package
+
+      - name: Find and Prepare dylib
+        run: |
+          mkdir -p extracted_dylib
+          # Busca el archivo .dylib dentro de la carpeta .theos uobj o paquetes y lo copia
+          find . -name "*.dylib" -exec cp {} extracted_dylib/ \;
+
+      - name: Upload dylib Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DARK-dylib
+          path: extracted_dylib/*.dylib
