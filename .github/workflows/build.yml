@@ -20,11 +20,16 @@ jobs:
       - name: Find and Prepare dylib
         run: |
           mkdir -p extracted_dylib
-          # Busca el archivo .dylib dentro de la carpeta .theos uobj o paquetes y lo copia
-          find . -name "*.dylib" -exec cp {} extracted_dylib/ \;
+          find . -name "*.dylib" -not -path "*/.theos/*" -exec cp {} extracted_dylib/ \;
+
+      - name: Compress to ZIP
+        run: |
+          cd extracted_dylib
+          zip -r ../DARK-dylib.zip *.dylib
 
       - name: Upload dylib Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DARK-dylib
-          path: extracted_dylib/*.dylib
+          path: DARK-dylib.zip
+          retention-days: 1
