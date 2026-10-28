@@ -6,15 +6,21 @@ include $(THEOS)/makefiles/common.mk
 LIBRARY_NAME = MyMenu
 
 MyMenu_FILES = Tweak.mm Menu.mm ESP.mm Loc.mm \
+               sources/HUDHelper.mm \
                esp/Core/AutoFire.mm \
+               esp/Core/AutoFireRemote.S \
                esp/Core/GhostMode.mm \
+               esp/Core/GhostRemote.S \
                esp/Core/PlayerModes.mm \
+               esp/Core/PlayerModesRemote.S \
                esp/Core/SilentAim.mm \
                esp/Core/SilentAimExternal.mm \
+               esp/Core/SilentAimRemote.S \
                esp/Core/_0xGL2972_.mm \
                esp/Core/_0xPDFFFF27.mm \
                esp/Core/_0xUNT2872_.mm \
                esp/drawing_view/FloatingFeatureControl.mm \
+               esp/drawing_view/ModMenuViewController.mm \
                esp/drawing_view/_0xE298S9_.mm \
                esp/drawing_view/_0xEDR2862_.mm \
                esp/drawing_view/_0xEPR2872_.mm \
