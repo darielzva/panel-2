@@ -9,18 +9,30 @@ jobs:
     runs-on: macos-latest
     env:
       OUT_NAME: FineIos@didierxit7
+      THEOS: ${{ github.workspace }}/theos
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Theos
+        id: cache-theos
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/theos
+          key: theos-${{ runner.os }}-v1
+
       - name: Instalar Theos
+        if: steps.cache-theos.outputs.cache-hit != 'true'
         run: |
           brew install ldid
-          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
-          rm -rf "$HOME/theos/sdks"
-          git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
-          ls "$HOME/theos/sdks"
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          git clone --recursive https://github.com/theos/theos.git "$THEOS"
+          rm -rf "$THEOS/sdks"
+          git clone --depth=1 https://github.com/theos/sdks.git "$THEOS/sdks"
+          ls "$THEOS/sdks"
+
+      - name: Instalar ldid (si viene del cache)
+        if: steps.cache-theos.outputs.cache-hit == 'true'
+        run: brew install ldid
 
       - name: Compilar
         run: make clean && make FINALPACKAGE=1
