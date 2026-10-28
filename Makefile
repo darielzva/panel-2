@@ -21,8 +21,13 @@ MyMenu_FILES = Tweak.mm Menu.mm ESP.mm Loc.mm \
                esp/drawing_view/_0xIC2872_.mm \
                esp/drawing_view/_0xMU2872_.mm
 
-MyMenu_CFLAGS = -fobjc-arc -I$(THEOS_PROJECT_DIR)/sources -Wno-unused-function
+MyMenu_CFLAGS = -fobjc-arc \
+                -I$(THEOS_PROJECT_DIR) \
+                -I$(THEOS_PROJECT_DIR)/sources \
+                -Wno-unused-function
+
 MyMenu_CCFLAGS = -std=c++17 -Wno-unused-function
+
 MyMenu_FRAMEWORKS = UIKit Foundation
 
 include $(THEOS_MAKE_PATH)/library.mk
