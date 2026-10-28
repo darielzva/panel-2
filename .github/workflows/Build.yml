@@ -24,7 +24,7 @@ jobs:
           mkdir -p temp_build
           
           # 2. Copy toàn bộ code từ thư mục có dấu cách sang thư mục tạm
-          cp -R "intex dylib/"* temp_build/
+          rsync -a "intex dylib/" temp_build/
           
           # 3. Di chuyển vào thư mục tạm không có dấu cách để build
           cd temp_build
