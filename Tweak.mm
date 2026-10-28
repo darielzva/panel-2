@@ -5,18 +5,51 @@
 
 using MyMenu::Tab;
 
-// The real drawing view — contains the entity loop, CALayer rendering,
-// ESPSyncFromPrefs, and _0x35572DA calls. Instantiated below.
-// Class is defined in esp/drawing_view/_0xE298S9_.mm.
+// The real drawing view lives in esp/drawing_view/_0xE298S9_.mm.
+// It contains the entity loop, CADisplayLink, all CAShapeLayer paths,
+// ESPSyncFromPrefs, and the _0x35572DA per-player draw calls.
+// We instantiate it by class name so this file has no link-time dependency.
+
+// ---------------------------------------------------------------------------
+// Retain-cycle-free retry loop for attaching the ESP view to the game window.
+// Uses a plain C function instead of a recursive block, so there is no capture.
+// ---------------------------------------------------------------------------
+static void AttachESPView(int attempt) {
+    UIWindow *win = nil;
+    for (UIScene *s in UIApplication.sharedApplication.connectedScenes) {
+        if (![s isKindOfClass:UIWindowScene.class]) continue;
+        if (s.activationState != UISceneActivationStateForegroundActive) continue;
+        for (UIWindow *w in ((UIWindowScene *)s).windows)
+            if (w.isKeyWindow) { win = w; break; }
+        if (win) break;
+    }
+
+    if (!win) {
+        if (attempt < 30)
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC),
+                           dispatch_get_main_queue(), ^{ AttachESPView(attempt + 1); });
+        return;
+    }
+
+    // _0xDAB2826 manages its own CADisplayLink, entity iteration, and draw calls.
+    // Adding it once is all that's needed — it self-updates via the display link.
+    UIView *espView = [[NSClassFromString(@"_0xDAB2826") alloc] initWithFrame:win.bounds];
+    espView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
+                               UIViewAutoresizingFlexibleHeight;
+    espView.layer.zPosition  = 500; // above game, below menu
+    [win addSubview:espView];
+}
+
+// ---------------------------------------------------------------------------
 
 __attribute__((constructor))
 static void MenuInit() {
 
-    // Restore all saved prefs into extern bools/floats before the menu renders.
+    // Restore saved prefs into extern bools/floats before the menu renders.
     ESPSyncFromPrefs();
 
-    // Sync ESPConfig struct to match restored extern state.
-    ESP::Config().enabled       = true; // overlay always active; feature flags gate drawing
+    // Mirror restored state into ESPConfig so menu toggle callbacks start correct.
+    ESP::Config().enabled       = true;
     ESP::Config().box           = isBox;
     ESP::Config().line          = isLine;
     ESP::Config().skeleton      = isBone;
@@ -34,6 +67,7 @@ static void MenuInit() {
     // ESP TAB
     // ----------------------------------------------------------------
     MyMenu::AddToggle(Tab::Esp, "esp.master", [](bool on) {
+        // Master gates all sub-features without clobbering their saved state.
         isBox    = on && ESP::Config().box;
         isBone   = on && ESP::Config().skeleton;
         isLine   = on && ESP::Config().line;
@@ -64,7 +98,7 @@ static void MenuInit() {
     MyMenu::AddToggle(Tab::Esp, "esp.skeleton", [](bool on) {
         ESP::Config().skeleton = on;
         isBone = on;
-        ESPPrefsSetBool(@"Skeleton", on);
+        ESPPrefsSetBool(@"Bone", on);
         ESPPrefsSync();
     });
 
@@ -109,6 +143,7 @@ static void MenuInit() {
     });
 
     MyMenu::AddToggle(Tab::Aim, "aim.ignorewall", [](bool on) {
+        ESP::Config().aimIgnoreWall = on;
         isAimIgnoreKnock = on;
         ESPPrefsSetBool(@"AimIgnoreKnock", on);
         ESPPrefsSync();
@@ -134,7 +169,7 @@ static void MenuInit() {
         [](int i) {
             ESP::Config().triggerMode = i;
             triggerMode = i;
-            ESPPrefsSetFloat(@"AimActivation", (float)i);
+            ESPPrefsSetFloat(@"TriggerMode", (float)i);
             ESPPrefsSync();
         });
 
@@ -143,7 +178,8 @@ static void MenuInit() {
         [](int i) {
             ESP::Config().aimTargetMode = i;
             aimPosition = i;
-            ESPPrefsSetFloat(@"AimType", (float)i);
+            ESPPrefsSetFloat(@"AimPosition", (float)i);
+            ESPPrefsSetFloat(@"AimType",     (float)i);
             ESPPrefsSync();
         });
 
@@ -155,41 +191,12 @@ static void MenuInit() {
     MyMenu::AddToggle(Tab::Extras, "ext.crosshair", [](bool on) { /* wire when ready */ });
 
     // ----------------------------------------------------------------
-    // Attach the real ESP drawing view (_0xDAB2826) to the game window.
-    // This view contains the entity loop, CALayer paths, and all draw calls.
-    // It retries until the game window is available (same as old project).
+    // Attach the real ESP overlay (_0xDAB2826) to the game window.
+    // Retries every second until the key window is available.
     // ----------------------------------------------------------------
-    ESP::Start(); // attaches MMOverlay placeholder (keeps ESP.mm compiling clean)
+    ESP::Start(); // keeps ESP.mm / MMOverlay in the build
 
-    dispatch_async(dispatch_get_main_queue(), ^{
-        // Retry loop — game window may not exist at constructor time.
-        __block void (^attach)(int) = ^(int attempt) {
-            UIWindow *win = nil;
-            for (UIScene *s in UIApplication.sharedApplication.connectedScenes) {
-                if (![s isKindOfClass:UIWindowScene.class]) continue;
-                if (s.activationState != UISceneActivationStateForegroundActive) continue;
-                for (UIWindow *w in ((UIWindowScene *)s).windows)
-                    if (w.isKeyWindow) { win = w; break; }
-                if (win) break;
-            }
-            if (!win) {
-                if (attempt < 30)
-                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC),
-                                   dispatch_get_main_queue(), ^{ attach(attempt + 1); });
-                return;
-            }
-            // _0xDAB2826 is the real drawing view from _0xE298S9_.mm.
-            // It manages its own CADisplayLink, CAShapeLayer paths, entity
-            // iteration, and _0x35572DA calls — nothing else needed here.
-            UIView *espView = [[NSClassFromString(@"_0xDAB2826") alloc]
-                               initWithFrame:win.bounds];
-            espView.autoresizingMask = UIViewAutoresizingFlexibleWidth |
-                                       UIViewAutoresizingFlexibleHeight;
-            espView.layer.zPosition = 500;
-            [win addSubview:espView];
-        };
-        attach(0);
-    });
+    dispatch_async(dispatch_get_main_queue(), ^{ AttachESPView(0); });
 
     MyMenu::Show();
 }
