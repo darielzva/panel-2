@@ -52,9 +52,6 @@ typedef enum {
 
 #endif
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"
-
 static int Utf16_To_Utf8(const UTF16* sourceStart, UTF8* targetStart, size_t outLen , ConversionFlags flags) {
     int result = 0;
     const UTF16* source = sourceStart;
@@ -128,5 +125,3 @@ static int Utf16_To_Utf8(const UTF16* sourceStart, UTF8* targetStart, size_t out
     }
     return result;
 }
-
-#pragma clang diagnostic pop

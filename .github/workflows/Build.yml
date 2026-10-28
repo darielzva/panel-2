@@ -1,0 +1,46 @@
+name: Build Dylib
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Theos
+        uses: Randomblock1/theos-action@v1
+        with:
+          theos-sdks: 'https://github.com/theos/sdks'
+
+      - name: Build Dylib
+        run: |
+          # 1. Tạo một thư mục tạm không có dấu cách
+          mkdir -p temp_build
+          
+          # 2. Copy toàn bộ code từ thư mục có dấu cách sang thư mục tạm
+          cp -R "intex dylib/"* temp_build/
+          
+          # 3. Di chuyển vào thư mục tạm không có dấu cách để build
+          cd temp_build
+          
+          find . -name "control" -exec perl -pi -e 's/\r//g' {} \; || true
+          make clean
+          make
+        env:
+          CFLAGS: "-Wl,-U,___isPlatformVersionAtLeast"
+          TARGET: iphone:clang:16.5:13.0
+          ARCHS: arm64
+
+      - name: Upload Dylib Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOSViet-Dylib
+          # Trỏ đường dẫn lấy file từ thư mục tạm
+          path: temp_build/.theos/obj/arm64/*.dylib
+          if-no-files-found: warn

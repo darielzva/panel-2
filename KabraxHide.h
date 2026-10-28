@@ -20,9 +20,6 @@
 #ifndef KABRAXHIDE_H
 #define KABRAXHIDE_H
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"
-
 #include <cstdint>
 #include <cstddef>
 
@@ -556,7 +553,5 @@ namespace _kh_ {
 #define KH_SEL(s) (sel_registerName(KH_STR(s)))
 #define KH_CLS(s) (objc_getClass(KH_STR(s)))
 #endif
-
-#pragma clang diagnostic pop
 
 #endif // KABRAXHIDE_H
