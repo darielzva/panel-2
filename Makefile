@@ -6,6 +6,7 @@ include $(THEOS)/makefiles/common.mk
 LIBRARY_NAME = MyMenu
 
 MyMenu_FILES = Tweak.mm Menu.mm ESP.mm Loc.mm \
+			   esp/Core/AutoFire.mm \
                esp/Core/GhostMode.mm \
                esp/Core/PlayerModes.mm \
                esp/Core/SilentAim.mm \
