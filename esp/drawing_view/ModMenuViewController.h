@@ -6,4 +6,6 @@
 @property (nonatomic, copy) void (^onCloseBlock)(void);
 @property (nonatomic, copy) void (^onExitHUDRequested)(void);
 
+- (BOOL)_0xF010:(CGPoint)point phase:(NSInteger)phase pointerId:(NSInteger)pointerId;
+
 @end

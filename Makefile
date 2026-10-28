@@ -24,9 +24,10 @@ MyMenu_FILES = Tweak.mm Menu.mm ESP.mm Loc.mm \
 MyMenu_CFLAGS = -fobjc-arc \
                 -I$(THEOS_PROJECT_DIR) \
                 -I$(THEOS_PROJECT_DIR)/sources \
-                -Wno-unused-function
+                -Wno-unused-function \
+                -Wno-unused-variable
 
-MyMenu_CCFLAGS = -std=c++17 -Wno-unused-function
+MyMenu_CCFLAGS = -std=c++17 -Wno-unused-function -Wno-unused-variable
 
 MyMenu_FRAMEWORKS = UIKit Foundation
 
