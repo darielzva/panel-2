@@ -2,8 +2,7 @@
 #import "Loc.h"
 
 static NSString *const kProduct    = @"Fine ios";
-static NSString *const kVersion    = @"Beta 2
-";
+static NSString *const kVersion    = @"Beta 2";
 static NSString *const kCreator    = @"@didierxit7";
 static NSString *const kContactURL = @"https://t.me/didierxit7";
 static NSString *const kGroupURL   = @"https://t.me/primexios";
