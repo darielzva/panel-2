@@ -60,7 +60,7 @@ static const CGFloat kMenuButtonSize = 44.0f;
         self.userInteractionEnabled = YES;
         _trackingPointerId = -1;
 #ifdef MIZZE_INJECTED
-        self.hidden = YES;
+        self.hidden = NO; // Always visible — match gate removed
         NSNotificationCenter *notifications = NSNotificationCenter.defaultCenter;
         [notifications addObserver:self selector:@selector(refreshInjectedMenuVisibility)
                               name:ESPMatchReadyChangedNotification object:nil];
@@ -170,8 +170,8 @@ static const CGFloat kMenuButtonSize = 44.0f;
 }
 
 - (void)refreshInjectedMenuVisibility {
-    if (ESPMatchReady() &&
-        UIApplication.sharedApplication.applicationState == UIApplicationStateActive) {
+    // Match gate removed — always show when app is active
+    if (UIApplication.sharedApplication.applicationState == UIApplicationStateActive) {
         self.hidden = NO;
     } else {
         [self suspendInjectedMenu];
@@ -182,7 +182,8 @@ static const CGFloat kMenuButtonSize = 44.0f;
 - (void)presentModMenu {
     if (self->_presentedModMenu) return;
 #ifdef MIZZE_INJECTED
-    if (self.hidden || !self.window || !ESPMatchReady() ||
+    // Match gate removed — allow menu open anywhere
+    if (self.hidden || !self.window ||
         UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
     const NSUInteger generation = _menuVisibilityGeneration;
 #endif
@@ -190,7 +191,7 @@ static const CGFloat kMenuButtonSize = 44.0f;
         if (self->_presentedModMenu) return;
 #ifdef MIZZE_INJECTED
         if (generation != self->_menuVisibilityGeneration || self.hidden ||
-            !self.window || !ESPMatchReady() ||
+            !self.window ||
             UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
 #endif
         
