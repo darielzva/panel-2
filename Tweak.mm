@@ -1,6 +1,11 @@
 #import "Menu.h"
 #import "ESP.h"
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
 #import "esp/drawing_view/esp.h"
+#pragma clang diagnostic pop
+
 #import "esp/drawing_view/ESPPrefs.h"
 
 using MyMenu::Tab;
