@@ -25,7 +25,7 @@ iOSViet_FILES := sources/StealthDylibInit.mm \
                  esp/drawing_view/_0xEDR2862_.mm \
                  esp/drawing_view/FloatingFeatureControl.mm \
                  $(wildcard esp/drawing_view/*.mm esp/drawing_view/*.cpp esp/Core/*.mm esp/Core/*.cpp) \
-                 esp/Core/AutoFireRemote.S esp/Core/GhostRemote.S esp/Core/PlayerModesRemote.S
+                 esp/Core/AutoFireRemote.S esp/Core/GhostRemote.S esp/Core/PlayerModesRemote.S esp/Core/SilentAimRemote.S
 
 iOSViet_CFLAGS += -DMIZZE_INJECTED=1 -fobjc-arc -Wno-deprecated-declarations -Wno-unused-function -Wno-unused-variable -Wno-unused-value -Wno-module-import-in-extern-c -Wno-unknown-warning-option -Wno-unused-but-set-variable -fvisibility=hidden -fno-rtti -Os
 iOSViet_CFLAGS += -I. -Iheaders -Isources -Ioxorany -Iobfuscation -Imenu

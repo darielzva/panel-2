@@ -1,11 +1,18 @@
 #import "Menu.h"
 #import "Loc.h"
+#import <objc/runtime.h>
 
 static NSString *const kProduct    = @"Fine ios";
 static NSString *const kVersion    = @"Beta 1";
 static NSString *const kCreator    = @"@didierxit7";
 static NSString *const kContactURL = @"https://t.me/didierxit7";
 static NSString *const kGroupURL   = @"https://t.me/primexios";
+
+// ---------------------------------------------------------------------------
+// Associated-object keys for iOS 13-compatible block actions
+// ---------------------------------------------------------------------------
+static const void *kBlockKey    = &kBlockKey;
+static const void *kChoiceKey   = &kChoiceKey;
 
 // ---------------------------------------------------------------------------
 // Estado y registro
@@ -128,6 +135,104 @@ void AddSectionLabel(UIScrollView *sv, CGFloat &y, CGFloat w, NSString *title) {
     y += 26;
 }
 
+// ---------------------------------------------------------------------------
+// _MMBlockTarget — iOS 13-compatible block trampoline
+// ---------------------------------------------------------------------------
+
+} // namespace (temporarily close to declare ObjC class at file scope)
+
+@interface _MMBlockTarget : NSObject
+@property (nonatomic, copy) dispatch_block_t action;
+- (void)fire;
+@end
+@implementation _MMBlockTarget
+- (void)fire { if (self.action) self.action(); }
+@end
+
+// ---------------------------------------------------------------------------
+// _MMSliderTarget — carries the slider + fmt + label + callback
+// ---------------------------------------------------------------------------
+@interface _MMSliderTarget : NSObject
+@property (nonatomic, weak)   UILabel *valueLabel;
+@property (nonatomic, copy)   NSString *fmt;
+@property (nonatomic, copy)   void (^onChange)(float);
+- (void)sliderChanged:(UISlider *)sender;
+@end
+@implementation _MMSliderTarget
+- (void)sliderChanged:(UISlider *)sender {
+    float v = sender.value;
+    self.valueLabel.text = [NSString stringWithFormat:self.fmt, v];
+    if (self.onChange) self.onChange(v);
+}
+@end
+
+// ---------------------------------------------------------------------------
+// _MMChoiceRow — iOS 13 UIAlertController-based choice picker
+// ---------------------------------------------------------------------------
+@interface _MMChoiceRow : NSObject
+@property (nonatomic, weak)   UIButton *button;
+@property (nonatomic, weak)   UILabel  *valueLabel;
+@property (nonatomic, copy)   NSArray<NSString *> *labels;
+@property (nonatomic, assign) int current;
+@property (nonatomic, copy)   void (^onPick)(int);
+- (void)tapped;
+@end
+@implementation _MMChoiceRow
+- (void)tapped {
+    // Find the topmost view controller to present from
+    UIWindow *keyWin = nil;
+    for (UIScene *s in UIApplication.sharedApplication.connectedScenes) {
+        if (![s isKindOfClass:UIWindowScene.class]) continue;
+        if (s.activationState != UISceneActivationStateForegroundActive) continue;
+        for (UIWindow *w in ((UIWindowScene *)s).windows)
+            if (w.isKeyWindow) { keyWin = w; break; }
+        if (keyWin) break;
+    }
+    if (!keyWin) return;
+    UIViewController *vc = keyWin.rootViewController;
+    while (vc.presentedViewController) vc = vc.presentedViewController;
+
+    UIAlertController *ac = [UIAlertController alertControllerWithTitle:nil
+                                                                message:nil
+                                                         preferredStyle:UIAlertControllerStyleActionSheet];
+    __weak _MMChoiceRow *wself = self;
+    for (int k = 0; k < (int)self.labels.count; k++) {
+        NSString *lbl = self.labels[k];
+        BOOL isCur = (k == self.current);
+        NSString *title = isCur ? [NSString stringWithFormat:@"✓ %@", lbl] : lbl;
+        [ac addAction:[UIAlertAction actionWithTitle:title
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(UIAlertAction *act) {
+            _MMChoiceRow *sr = wself;
+            if (!sr) return;
+            sr.current = k;
+            sr.valueLabel.text = lbl;
+            if (sr.onPick) sr.onPick(k);
+        }]];
+    }
+    [ac addAction:[UIAlertAction actionWithTitle:@"Cancel"
+                                          style:UIAlertActionStyleCancel
+                                        handler:nil]];
+    // iPad popover anchor
+    if (ac.popoverPresentationController && self.button) {
+        ac.popoverPresentationController.sourceView = self.button;
+        ac.popoverPresentationController.sourceRect = self.button.bounds;
+    }
+    [vc presentViewController:ac animated:YES completion:nil];
+}
+@end
+
+namespace {
+
+// Re-open namespace for the rest of the helpers
+
+static void AddBlockAction(UIControl *ctrl, UIControlEvents events, dispatch_block_t blk) {
+    _MMBlockTarget *t = [_MMBlockTarget new];
+    t.action = blk;
+    objc_setAssociatedObject(ctrl, (__bridge void *)t, t, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [ctrl addTarget:t action:@selector(fire) forControlEvents:events];
+}
+
 UIView *ToggleRow(CGFloat y, CGFloat w, NSString *title, BOOL on,
                   void (^onTap)(BOOL newValue, UIView *check)) {
     UIButton *row = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -139,11 +244,11 @@ UIView *ToggleRow(CGFloat y, CGFloat w, NSString *title, BOOL on,
     chk.center = CGPointMake(row.bounds.size.width - 26, 22);
     [row addSubview:chk];
     __block BOOL state = on;
-    [row addAction:[UIAction actionWithHandler:^(UIAction *a) {
+    AddBlockAction(row, UIControlEventTouchUpInside, ^{
         state = !state;
         SetCheck(chk, state);
         onTap(state, chk);
-    }] forControlEvents:UIControlEventTouchUpInside];
+    });
     return row;
 }
 
@@ -170,31 +275,30 @@ UIView *SliderRow(CGFloat y, CGFloat w, NSString *title, float mn, float mx, flo
     s.minimumTrackTintColor = Accent();
     s.maximumTrackTintColor = W(0.2);
     s.thumbTintColor = UIColor.whiteColor;
-    [s addAction:[UIAction actionWithHandler:^(UIAction *a) {
-        float v = ((UISlider *)a.sender).value;
-        vp.text = [NSString stringWithFormat:fmt, v];
-        onChange(v);
-    }] forControlEvents:UIControlEventValueChanged];
+
+    // iOS 13-compatible: trampoline target carries label + fmt + callback
+    _MMSliderTarget *st = [_MMSliderTarget new];
+    st.valueLabel = vp;
+    st.fmt = fmt;
+    st.onChange = onChange;
+    objc_setAssociatedObject(s, kBlockKey, st, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [s addTarget:st action:@selector(sliderChanged:) forControlEvents:UIControlEventValueChanged];
+
     [row addSubview:s];
     return row;
 }
 
 void AttachChoice(UIButton *btn, UILabel *valueLbl, NSArray<NSString *> *labels,
                   int cur, void (^onPick)(int)) {
-    NSMutableArray *acts = [NSMutableArray array];
-    __weak UIButton *wbtn = btn;
-    for (int k = 0; k < (int)labels.count; k++) {
-        UIAction *a = [UIAction actionWithTitle:labels[k] image:nil identifier:nil
-                                        handler:^(UIAction *x) {
-            valueLbl.text = labels[k];
-            onPick(k);
-            if (wbtn) AttachChoice(wbtn, valueLbl, labels, k, onPick);
-        }];
-        a.state = (k == cur) ? UIMenuElementStateOn : UIMenuElementStateOff;
-        [acts addObject:a];
-    }
-    btn.menu = [UIMenu menuWithChildren:acts];
-    btn.showsMenuAsPrimaryAction = YES;
+    _MMChoiceRow *cr = [_MMChoiceRow new];
+    cr.button     = btn;
+    cr.valueLabel = valueLbl;
+    cr.labels     = labels;
+    cr.current    = cur;
+    cr.onPick     = onPick;
+    // Keep alive via associated object on the button
+    objc_setAssociatedObject(btn, kChoiceKey, cr, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [btn addTarget:cr action:@selector(tapped) forControlEvents:UIControlEventTouchUpInside];
 }
 
 UIView *InfoRow(CGFloat y, CGFloat w, NSString *title, NSString *value, NSString *url) {
@@ -213,8 +317,8 @@ UIView *InfoRow(CGFloat y, CGFloat w, NSString *title, NSString *value, NSString
         ar.frame = CGRectMake(rw - 30, 15, 14, 14);
         ar.contentMode = UIViewContentModeScaleAspectFit;
         [row addSubview:ar];
-        [row addAction:[UIAction actionWithHandler:^(UIAction *a) { OpenURL(url); }]
-      forControlEvents:UIControlEventTouchUpInside];
+        NSString *urlCopy = [url copy];
+        AddBlockAction(row, UIControlEventTouchUpInside, ^{ OpenURL(urlCopy); });
     }
     return row;
 }
@@ -328,10 +432,11 @@ UIWindow *FindKeyWindow() {
         [b setImage:Sym(icons[i], 18, UIImageSymbolWeightSemibold) forState:UIControlStateNormal];
         b.tintColor = sel ? UIColor.blackColor : W(0.85);
         __weak MMPanel *wself = self;
-        [b addAction:[UIAction actionWithHandler:^(UIAction *a) {
-            wself.tab = i;
+        int tabIdx = i;
+        AddBlockAction(b, UIControlEventTouchUpInside, ^{
+            wself.tab = tabIdx;
             [wself rebuildAsync];
-        }] forControlEvents:UIControlEventTouchUpInside];
+        });
         [self.sidebar addSubview:b];
     }
 }
@@ -419,9 +524,9 @@ UIWindow *FindKeyWindow() {
                 b.backgroundColor = [Accent() colorWithAlphaComponent:0.28];
                 [b setTitle:title forState:UIControlStateNormal];
                 b.titleLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
-                [b addAction:[UIAction actionWithHandler:^(UIAction *a) {
+                AddBlockAction(b, UIControlEventTouchUpInside, ^{
                     if (Items()[i].onTap) Items()[i].onTap();
-                }] forControlEvents:UIControlEventTouchUpInside];
+                });
                 [sv addSubview:b];
                 y += 52;
             }
@@ -466,11 +571,12 @@ UIWindow *FindKeyWindow() {
         sw.layer.cornerRadius = gTheme.square ? 6 : 11;
         sw.layer.borderWidth = (k == gTheme.accent) ? 2 : 0;
         sw.layer.borderColor = UIColor.whiteColor.CGColor;
-        [sw addAction:[UIAction actionWithHandler:^(UIAction *a) {
-            gTheme.accent = k;
+        int accentIdx = k;
+        AddBlockAction(sw, UIControlEventTouchUpInside, ^{
+            gTheme.accent = accentIdx;
             SaveTheme();
             [wself rebuildAsync];
-        }] forControlEvents:UIControlEventTouchUpInside];
+        });
         [accRow addSubview:sw];
     }
     [sv addSubview:accRow];
@@ -499,10 +605,11 @@ UIWindow *FindKeyWindow() {
         b.layer.cornerRadius = gTheme.square ? 6 : 14;
         [b setTitle:codes[k] forState:UIControlStateNormal];
         b.titleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightBold];
-        [b addAction:[UIAction actionWithHandler:^(UIAction *a) {
-            Loc::Set((Loc::Lang)k);
+        int langIdx = k;
+        AddBlockAction(b, UIControlEventTouchUpInside, ^{
+            Loc::Set((Loc::Lang)langIdx);
             [wself rebuildAsync];
-        }] forControlEvents:UIControlEventTouchUpInside];
+        });
         [langRow addSubview:b];
     }
     [sv addSubview:langRow];
