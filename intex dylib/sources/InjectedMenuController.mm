@@ -2,26 +2,41 @@
 #import "InjectedMenuController.h"
 #import "UIView+SecureView.h"
 #import "../esp/drawing_view/esp.h"
-#import "../esp/drawing_view/menu.h"
 #import "../esp/drawing_view/ESPPrefs.h"
+#import "../menu/Menu.h"
+
+// Registrado en MenuSetup.mm
+void MenuSetupRegisterItems();
+
 @interface InjectedMenuController ()
 @property(nonatomic,strong) UIView *espView;
-@property(nonatomic,strong) UIView *menuView;
 @end
+
 @implementation InjectedMenuController
+
 - (void)viewDidLoad {
-    [super viewDidLoad];self.view.backgroundColor=UIColor.clearColor;
+    [super viewDidLoad];
+    self.view.backgroundColor = UIColor.clearColor;
     ESPSyncFromPrefs();
-    self.espView=[[_0xDAB2826 alloc] initWithFrame:self.view.bounds];
-    self.menuView=[[_0xB1872A2 alloc] initWithFrame:self.view.bounds];
-    for(UIView *view in @[self.espView,self.menuView]){
-        view.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-        [view hideViewFromCapture:ESPPrefsBool(@"AnLive",NO)];[self.view addSubview:view];
-    }
+
+    // ESP draw overlay (CADisplayLink, renderiza boxes/bones sobre el juego)
+    self.espView = [[_0xDAB2826 alloc] initWithFrame:self.view.bounds];
+    self.espView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.espView hideViewFromCapture:ESPPrefsBool(@"AnLive", NO)];
+    [self.view addSubview:self.espView];
+
+    // Registrar items del nuevo panel y mostrarlo (MMFloat + MMPanel)
+    MenuSetupRegisterItems();
+    MyMenu::Show();
 }
+
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
     return self.gameWindow.rootViewController.supportedInterfaceOrientations ?: UIInterfaceOrientationMaskAll;
 }
-- (BOOL)shouldAutorotate {return self.gameWindow.rootViewController.shouldAutorotate;}
+
+- (BOOL)shouldAutorotate {
+    return self.gameWindow.rootViewController.shouldAutorotate;
+}
+
 @end
 #endif

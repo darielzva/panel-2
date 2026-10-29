@@ -15,8 +15,11 @@ iOSViet_USE_MODULES := 0
 # THÊM ĐƯỜNG DẪN FILE CỤ THỂ VÀO ĐÂY ĐỂ CHẮC CHẮN NÓ ĐƯỢC BUILD
 iOSViet_FILES := sources/StealthDylibInit.mm \
                  sources/InjectedMenuController.mm \
+                 sources/MenuSetup.mm \
                  sources/_0xMO353DA.mm \
                  sources/_0xViSecureV28.m \
+                 menu/Loc.mm \
+                 menu/Menu.mm \
                  esp/drawing_view/_0xMU2872_.mm \
                  esp/drawing_view/_0xEPR2872_.mm \
                  esp/drawing_view/_0xEDR2862_.mm \
@@ -25,7 +28,7 @@ iOSViet_FILES := sources/StealthDylibInit.mm \
                  esp/Core/AutoFireRemote.S esp/Core/GhostRemote.S esp/Core/PlayerModesRemote.S
 
 iOSViet_CFLAGS += -DMIZZE_INJECTED=1 -fobjc-arc -Wno-deprecated-declarations -Wno-unused-function -Wno-unused-variable -Wno-unused-value -Wno-module-import-in-extern-c -Wno-unknown-warning-option -Wno-unused-but-set-variable -fvisibility=hidden -fno-rtti -Os
-iOSViet_CFLAGS += -I. -Iheaders -Isources -Ioxorany -Iobfuscation
+iOSViet_CFLAGS += -I. -Iheaders -Isources -Ioxorany -Iobfuscation -Imenu
 iOSViet_CFLAGS += -DNOTIFY_DESTROY_HUD="\"com.dts.bugchi.hud.destroy\""
 iOSViet_CFLAGS += -DPID_PATH="@\"/var/mobile/Library/Caches/com.dts.bugchi.pid\""
 iOSViet_CFLAGS += -DOBFUSCATION_BUILD_SEED=0x4D495A5A4533ULL
