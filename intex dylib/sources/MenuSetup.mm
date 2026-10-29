@@ -1,17 +1,11 @@
 #ifdef MIZZE_INJECTED
 #import "../menu/Menu.h"
 #import "../menu/Loc.h"
+#import "../esp/drawing_view/esp.h"
 
 // ── Definiciones de variables de estado (declaradas como extern en esp.h) ────
-bool isBox          = false;
-bool isBone         = false;
-bool isHealth       = false;
-bool isName         = false;
-bool isDis          = false;
-bool isLine         = false;
-bool isHeadRedDot   = false;
-bool isBox3D        = false;
-bool isCleanESP     = false;
+// isBox, isBone, isHealth, isName, isDis, isLine, isHeadRedDot, isBox3D, isCleanESP
+// are defined in esp/drawing_view/_0xE298S9_.mm — only extern here via esp.h
 bool isWeapon       = false;
 bool isAimbot       = false;
 bool isAimIgnoreKnock   = false;
