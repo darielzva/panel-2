@@ -94,14 +94,7 @@ pid_t GetGameProcesspid(char *GameProcessName) {
 
 uintptr_t GetGameModule_Base(char *GameProcessName) {
 #ifdef MIZZE_INJECTED
-    // Each injected artifact must attach only to the game its profile targets.
-#ifdef MIZZE_GAME_MAX
-    if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.dts.freefiremax"]) return 0;
-#else
-    if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.dts.freefireth"]) return 0;
-#endif
-    // In-process builds must not depend on privileged process enumeration or
-    // task_for_pid. Own a send-right reference just like the external cache.
+    // Bundle ID check removed — works with any repackaged IPA
     if (get_task == MACH_PORT_NULL) {
         task_t ownTask = mach_task_self();
         if (mach_port_mod_refs(ownTask, ownTask, MACH_PORT_RIGHT_SEND, 1) != KERN_SUCCESS) return 0;
@@ -122,7 +115,6 @@ uintptr_t GetGameModule_Base(char *GameProcessName) {
 #else
     pid_t pid = GetGameProcesspid(GameProcessName);
     if (pid == -1) {
-        // A transient process-list failure must not discard a live task.
         if (GameTaskIsAlive()) return cachedModuleBase;
         ResetGameTask();
         return 0;
@@ -151,7 +143,7 @@ uintptr_t GetGameModule_Base(char *GameProcessName) {
     }
     if (!isVaildPtr(base)) return 0;
 
-    (void)picked; // tránh warning
+    (void)picked;
     cachedModuleBase = base;
     return base;
 #endif
