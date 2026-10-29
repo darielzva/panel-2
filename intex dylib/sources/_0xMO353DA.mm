@@ -138,7 +138,7 @@
     [self.header addSubview:separator];
     
     UILabel *brand = [[UILabel alloc] initWithFrame:CGRectMake(18, 11, 220, 23)];
-    brand.text = @"INTEX X";
+    brand.text = @"FINE IOS";
     brand.font = MizzeFont(19, UIFontWeightBold);
     brand.adjustsFontSizeToFitWidth = YES; brand.minimumScaleFactor = 0.7;
     brand.tag = 10;
@@ -607,7 +607,7 @@
         y = [self toggle:@"Tiết kiệm pin (30 FPS)" key:@"BalancedRender" fallback:NO y:y];
     }
     
-    UILabel *credit=[self label:@"InTex X Premium" frame:CGRectMake(8,y+16,[self contentWidth]-16,20) size:10];
+    UILabel *credit=[self label:@"FINE IOS" frame:CGRectMake(8,y+16,[self contentWidth]-16,20) size:10];
     credit.textColor=[[UIColor whiteColor] colorWithAlphaComponent:0.3];credit.textAlignment=NSTextAlignmentCenter;
     [self.scroll addSubview:credit];y+=50;
     
