@@ -95,15 +95,81 @@
 @property (nonatomic, strong) UIControl *activeControl;
 @property (nonatomic, strong) UILabel *spinStatusLabel;
 @property (nonatomic, strong) NSTimer *spinStatusTimer;
+@property (nonatomic, assign) BOOL darkMode;
+@property (nonatomic, strong) UIButton *themeButton;
 @end
 
 @implementation _0xDEADBEEE
-- (UIColor *)textColor { return MizzeText(); }
-- (UIColor *)mutedColor { return MizzeMuted(); }
+
+- (UIColor *)textColor { return self.darkMode ? [UIColor colorWithWhite:0.9 alpha:1.0] : [UIColor colorWithWhite:0.1 alpha:1.0]; }
+- (UIColor *)mutedColor { return self.darkMode ? [UIColor colorWithWhite:0.55 alpha:1.0] : [UIColor colorWithWhite:0.4 alpha:1.0]; }
+- (UIColor *)panelBg   { return self.darkMode ? [UIColor colorWithWhite:0.06 alpha:0.97] : [UIColor colorWithWhite:0.97 alpha:0.97]; }
+- (UIColor *)rowBg     { return self.darkMode ? [[UIColor whiteColor] colorWithAlphaComponent:0.05] : [[UIColor blackColor] colorWithAlphaComponent:0.04]; }
+- (UIBlurEffect *)blurFX { return [UIBlurEffect effectWithStyle:self.darkMode ? UIBlurEffectStyleSystemMaterialDark : UIBlurEffectStyleSystemMaterialLight]; }
+
+- (void)applyDefaults {
+    // Only write defaults if this is the very first launch (key absent)
+    NSDictionary *defaults = @{
+        @"ESPEnabled"       : @NO,
+        @"Box"              : @NO,
+        @"Box3D"            : @NO,
+        @"CleanESP"         : @NO,
+        @"Name"             : @NO,
+        @"Health"           : @NO,
+        @"Line"             : @NO,
+        @"Skeleton"         : @NO,
+        @"HeadRedDot"       : @NO,
+        @"Dis"              : @NO,
+        @"ShowFov"          : @YES,  // FOV circle visible
+        @"AimLag"           : @NO,
+        @"AimTargetLine"    : @NO,
+        @"SilentAim"        : @NO,
+        @"AutoFire"         : @NO,
+        @"AutoFireFloating" : @NO,
+        @"FastFire"         : @NO,
+        @"ShootNoReload"    : @NO,
+        @"GhostModeFloating": @NO,
+        @"FakeLagFloating"  : @NO,
+        @"FlyFloating"      : @NO,
+        @"RunSpeedFloating" : @NO,
+        @"RunSpeed"         : @NO,
+        @"VisualSpin"       : @NO,
+        @"AnLive"           : @NO,
+        @"DarkTheme"        : @YES,
+        @"BalancedRender"   : @NO,
+        // Aimbot ON, head (type=0), activation = "khi bắn" (1)
+        @"AimType"          : @(0.0f),
+        @"AimActivation"    : @(1.0f),
+        // FOV size default
+        @"FovSize"          : @(40.0f),
+        @"SilentFovSize"    : @(18.0f),
+    };
+    NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
+    BOOL firstLaunch = ![ud objectForKey:@"_MizzeDefaultsApplied"];
+    if (firstLaunch) {
+        for (NSString *key in defaults) {
+            id val = defaults[key];
+            if ([val isKindOfClass:NSNumber.class]) {
+                // Distinguish bool from float by checking objCType
+                const char *t = ((NSNumber *)val).objCType;
+                if (strcmp(t, @encode(BOOL)) == 0 || strcmp(t, @encode(bool)) == 0 || strcmp(t, @encode(char)) == 0) {
+                    ESPPrefsSetBool(key, ((NSNumber *)val).boolValue);
+                } else {
+                    ESPPrefsSetFloat(key, ((NSNumber *)val).floatValue);
+                }
+            }
+        }
+        [ud setBool:YES forKey:@"_MizzeDefaultsApplied"];
+        [ud synchronize];
+        ESPSyncFromPrefs();
+    }
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     MizzePrepareMenuPrefs();
+    [self applyDefaults];
+    self.darkMode = ESPPrefsBool(@"DarkTheme", YES);
     __weak _0xDEADBEEE *weakSelf=self;
     self.spinStatusTimer=[NSTimer scheduledTimerWithTimeInterval:.5 repeats:YES block:^(NSTimer *timer){
         _0xDEADBEEE *owner=weakSelf;
@@ -115,11 +181,11 @@
     self.controls = [NSMutableArray array];
     
     // Hiệu ứng nền mờ kính (Blur)
-    self.blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterialDark]];
+    self.blurView = [[UIVisualEffectView alloc] initWithEffect:[self blurFX]];
     self.blurView.layer.cornerRadius = 24;
     self.blurView.clipsToBounds = YES;
     [self.view addSubview:self.blurView];
-    
+
     self.panel = [[UIView alloc] initWithFrame:CGRectZero];
     self.panel.backgroundColor = [UIColor clearColor];
     self.panel.layer.cornerRadius = 24;
@@ -127,36 +193,48 @@
     self.panel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.15].CGColor;
     self.panel.clipsToBounds = YES;
     [self.view addSubview:self.panel];
-    
+
     self.header = [[UIView alloc] initWithFrame:CGRectZero];
     self.header.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.03];
     [self.panel addSubview:self.header];
-    
+
     UIView *separator = [[UIView alloc] initWithFrame:CGRectMake(0, 57.5, 440, 0.5)];
     separator.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.1];
     separator.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     [self.header addSubview:separator];
-    
+
     UILabel *brand = [[UILabel alloc] initWithFrame:CGRectMake(18, 11, 220, 23)];
     brand.text = @"FINE IOS";
     brand.font = MizzeFont(19, UIFontWeightBold);
     brand.adjustsFontSizeToFitWidth = YES; brand.minimumScaleFactor = 0.7;
     brand.tag = 10;
     [self.header addSubview:brand];
-    
+
     UILabel *caption = [[UILabel alloc] initWithFrame:CGRectMake(18, 35, 220, 14)];
     caption.text = @"Telegram : @duong1907";
     caption.font = MizzeFont(9, UIFontWeightMedium);
     caption.tag = 11;
     [self.header addSubview:caption];
-    
+
     UILabel *logo = [self label:@"I" frame:CGRectMake(14, 12, 34, 34) size:23];
     logo.tag = 13; logo.textAlignment = NSTextAlignmentCenter;
     logo.layer.cornerRadius = 10; logo.clipsToBounds = YES;
     logo.backgroundColor = [MizzeMint() colorWithAlphaComponent:0.15];
     logo.textColor = MizzeMint();
     [self.header addSubview:logo];
-    
+
+    // Botón tema (luna/sol) — tag 14, a la izquierda del botón cerrar
+    UIButton *themeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    themeBtn.frame = CGRectMake(230, 11, 36, 36);
+    themeBtn.tag = 14;
+    themeBtn.layer.cornerRadius = 10;
+    [themeBtn setTitle:self.darkMode ? @"🌙" : @"☀️" forState:UIControlStateNormal];
+    themeBtn.titleLabel.font = [UIFont systemFontOfSize:18];
+    [themeBtn addTarget:self action:@selector(toggleTheme) forControlEvents:UIControlEventTouchUpInside];
+    [self.header addSubview:themeBtn];
+    self.themeButton = themeBtn;
+
+    // Botón cerrar — tag 12, esquina superior derecha
     UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
     close.frame = CGRectMake(268, 10, 32, 36);
     close.tag = 12;
@@ -219,6 +297,8 @@
     
     UIView *closeBtn = [self.header viewWithTag:12];
     if (closeBtn) closeBtn.frame = CGRectMake(MAX(0.0f, w - 48.0f), 11, 36, 36);
+    UIView *themeBtn = [self.header viewWithTag:14];
+    if (themeBtn) themeBtn.frame = CGRectMake(MAX(0.0f, w - 90.0f), 11, 36, 36);
     
     CGFloat navPadding = 14;
     CGFloat navGap = 6;
@@ -281,7 +361,7 @@
 - (CGFloat)toggle:(NSString *)title key:(NSString *)key fallback:(BOOL)fallback y:(CGFloat)y {
     CGFloat width = [self contentWidth];
     UIView *row = [[UIView alloc] initWithFrame:CGRectMake(0, y, width, 46)];
-    row.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.05];
+    row.backgroundColor = [self rowBg];
     row.layer.cornerRadius = 10;
     
     UILabel *titleLabel = [self label:title frame:CGRectMake(14, 0, MAX(10, width - 86), 46) size:14.5];
@@ -366,7 +446,7 @@
 - (CGFloat)slider:(NSString *)title key:(NSString *)key min:(float)minimum max:(float)maximum fallback:(float)fallback y:(CGFloat)y {
     CGFloat width = [self contentWidth];
     UIView *row = [[UIView alloc] initWithFrame:CGRectMake(0, y, width, 70)];
-    row.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.05];
+    row.backgroundColor = [self rowBg];
     row.layer.cornerRadius = 10;
     
     UILabel *label = [self label:title frame:CGRectMake(14, 8, width - 28, 20) size:13];
@@ -481,13 +561,14 @@
     self.builtWidth = [self contentWidth];
     
     if (@available(iOS 13.0, *)) {
-        self.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
-        self.blurView.effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterialDark];
+        self.overrideUserInterfaceStyle = self.darkMode ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+        self.blurView.effect = [self blurFX];
     }
-    
-    ((UILabel *)[self.header viewWithTag:10]).textColor = UIColor.whiteColor;
-    ((UILabel *)[self.header viewWithTag:11]).textColor = [UIColor colorWithWhite:0.7 alpha:1.0];
-    [(UIButton *)[self.header viewWithTag:12] setTitleColor:[UIColor colorWithWhite:0.7 alpha:1.0] forState:UIControlStateNormal];
+
+    ((UILabel *)[self.header viewWithTag:10]).textColor = [self textColor];
+    ((UILabel *)[self.header viewWithTag:11]).textColor = [self mutedColor];
+    [(UIButton *)[self.header viewWithTag:12] setTitleColor:[self mutedColor] forState:UIControlStateNormal];
+    [(UIButton *)[self.header viewWithTag:14] setTitle:self.darkMode ? @"🌙" : @"☀️" forState:UIControlStateNormal];
     
     for (NSInteger i = 0; i < 4; ++i) {
         UIButton *button = self.navButtons[i];
@@ -641,6 +722,13 @@
 - (void)goToColorsTab {
     self.page = 2;
     self.scroll.contentOffset = CGPointZero;
+    [self rebuildAnimated];
+}
+
+- (void)toggleTheme {
+    self.darkMode = !self.darkMode;
+    ESPPrefsSetBool(@"DarkTheme", self.darkMode);
+    [self.themeButton setTitle:self.darkMode ? @"🌙" : @"☀️" forState:UIControlStateNormal];
     [self rebuildAnimated];
 }
 

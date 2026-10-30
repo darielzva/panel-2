@@ -83,6 +83,7 @@ static const CGFloat kMenuButtonSize = 44.0f;
                                                    object:nil];
 
         [self setupMenuButton];
+        [self setupThreeFingerGesture];
         self.quickControls = [NSMutableDictionary dictionary];
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(quickPrefsChanged:)
             name:NSUserDefaultsDidChangeNotification object:nil];
@@ -92,6 +93,17 @@ static const CGFloat kMenuButtonSize = 44.0f;
 #endif
     }
     return self;
+}
+
+- (void)setupThreeFingerGesture {
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(threeFingerTap:)];
+    tap.numberOfTouchesRequired = 3;
+    tap.numberOfTapsRequired = 1;
+    [self addGestureRecognizer:tap];
+}
+
+- (void)threeFingerTap:(UITapGestureRecognizer *)tap {
+    [self togglePanel];
 }
 
 - (void)setupMenuButton {
