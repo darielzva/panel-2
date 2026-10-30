@@ -563,6 +563,20 @@
         y = [self slider:@"Tầm hiển thị ESP" key:@"ESPMaxDistance" min:50 max:500 fallback:150 y:y];
         y = [self slider:@"Vàng khi máu ≤" key:@"HealthYellowPercent" min:10 max:90 fallback:50 y:y];
         y = [self slider:@"Đỏ khi máu ≤" key:@"HealthRedPercent" min:5 max:80 fallback:25 y:y];
+
+        y = [self section:@"FOV" y:y];
+        y = [self slider:@"Kích thước FOV" key:@"FovSize" min:5 max:48 fallback:40 y:y];
+
+        y = [self section:@"Màu sắc" y:y];
+        UIButton *colorShortcut = [UIButton buttonWithType:UIButtonTypeSystem];
+        colorShortcut.frame = CGRectMake(0, y, [self contentWidth], 46);
+        colorShortcut.layer.cornerRadius = 12;
+        colorShortcut.backgroundColor = [MizzeMint() colorWithAlphaComponent:0.15];
+        [colorShortcut setTitle:@"🎨 Đổi màu ESP / FOV" forState:UIControlStateNormal];
+        [colorShortcut setTitleColor:MizzeMint() forState:UIControlStateNormal];
+        colorShortcut.titleLabel.font = MizzeFont(14, UIFontWeightSemibold);
+        [colorShortcut addTarget:self action:@selector(goToColorsTab) forControlEvents:UIControlEventTouchUpInside];
+        [self.scroll addSubview:colorShortcut]; [self.controls addObject:colorShortcut]; y += 54;
     } else if (self.page == 2) {
         UISegmentedControl *target = [[UISegmentedControl alloc] initWithItems:@[@"Box", @"FOV"]];
         target.frame = CGRectMake(0, y, [self contentWidth], 40); target.selectedSegmentIndex = self.colorTarget;
@@ -622,6 +636,12 @@
     
     self.scroll.contentSize = CGSizeMake([self contentWidth], y + 8);
     self.scroll.contentOffset = CGPointMake(0, MAX(0, MIN(offset, y + 8 - self.scroll.bounds.size.height)));
+}
+
+- (void)goToColorsTab {
+    self.page = 2;
+    self.scroll.contentOffset = CGPointZero;
+    [self rebuildAnimated];
 }
 
 - (void)toggleChanged:(MizzeCheckBox *)sender {
