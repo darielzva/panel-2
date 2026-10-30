@@ -159,6 +159,9 @@
                 }
             }
         }
+        // Mark aim prefs as explicitly set so MizzePrepareMenuPrefs
+        // (called right after this) does not reset AimActivation to Off.
+        ESPPrefsSetBool(@"ExplicitAimMenuV1", YES);
         [ud setBool:YES forKey:@"_MizzeDefaultsApplied"];
         [ud synchronize];
         ESPSyncFromPrefs();
@@ -167,8 +170,12 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    MizzePrepareMenuPrefs();
+    // applyDefaults MUST run before MizzePrepareMenuPrefs so that AimActivation
+    // and AimType are written to prefs on first launch before MizzePrepareMenuPrefs
+    // reads them (it would otherwise overwrite them with Off/Head defaults before
+    // ExplicitAimMenuV1 is set, losing the desired "fire + head" first-launch state).
     [self applyDefaults];
+    MizzePrepareMenuPrefs();
     self.darkMode = ESPPrefsBool(@"DarkTheme", YES);
     __weak _0xDEADBEEE *weakSelf=self;
     self.spinStatusTimer=[NSTimer scheduledTimerWithTimeInterval:.5 repeats:YES block:^(NSTimer *timer){

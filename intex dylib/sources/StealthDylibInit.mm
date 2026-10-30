@@ -11,8 +11,12 @@
 @end
 @implementation MizzeOverlayContainer
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    // Pass nil only for self — contentView and all its subviews (including
+    // the floating button and the 3-finger gesture recognizer) must receive
+    // touches. Returning nil for contentView was silently killing all gesture
+    // recognizers attached to _0xB1872A2 and its children.
     UIView *hit = [super hitTest:point withEvent:event];
-    return (hit == self || hit == self.contentView) ? nil : hit;
+    return (hit == self) ? nil : hit;
 }
 @end
 
