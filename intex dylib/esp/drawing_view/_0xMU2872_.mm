@@ -83,7 +83,6 @@ static const CGFloat kMenuButtonSize = 44.0f;
                                                    object:nil];
 
         [self setupMenuButton];
-        [self setupThreeFingerGesture];
         self.quickControls = [NSMutableDictionary dictionary];
         [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(quickPrefsChanged:)
             name:NSUserDefaultsDidChangeNotification object:nil];
