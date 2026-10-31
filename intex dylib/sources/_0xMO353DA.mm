@@ -211,14 +211,14 @@
     [self.header addSubview:separator];
 
     UILabel *brand = [[UILabel alloc] initWithFrame:CGRectMake(18, 11, 220, 23)];
-    brand.text = @"FINE IOS";
+    brand.text = @"DAAE IOS";
     brand.font = MizzeFont(19, UIFontWeightBold);
     brand.adjustsFontSizeToFitWidth = YES; brand.minimumScaleFactor = 0.7;
     brand.tag = 10;
     [self.header addSubview:brand];
 
     UILabel *caption = [[UILabel alloc] initWithFrame:CGRectMake(18, 35, 220, 14)];
-    caption.text = @"Telegram : @duong1907";
+    caption.text = @"Telegram : t.me/didierxit7";
     caption.font = MizzeFont(9, UIFontWeightMedium);
     caption.tag = 11;
     [self.header addSubview:caption];
@@ -252,7 +252,7 @@
     [self.header addSubview:close];
     
     NSMutableArray *navigation = [NSMutableArray array];
-    NSArray *names = @[@"Aim", @"ESP", @"Màu sắc", @"Thiết lập"];
+    NSArray *names = @[@"Aim", @"ESP", @"Colores", @"Ajustes"];
     for (NSInteger i = 0; i < 4; ++i) {
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.tag = 200 + i; button.accessibilityLabel = names[i];
@@ -434,7 +434,7 @@
 }
 
 - (CGFloat)activationPicker:(CGFloat)y {
-    NSArray *names=@[@"Khi bắn",@"Khi mở ngắm",@"Luôn luôn",@"Fire + Scope\n(cùng lúc)"];
+    NSArray *names=@[@"Al disparar",@"Al apuntar",@"Siempre",@"Fire + Scope\n(ambos)"];
     const NSInteger mode=static_cast<int>(AimModePolicy::ReadActivation(ESPPrefsFloat(@"AimActivation",0)));
     const CGFloat width=([self contentWidth]-8)*.5;
     for (NSUInteger i=0;i<names.count;++i) {
@@ -509,7 +509,7 @@
     [field addTarget:self action:@selector(numberChanged:) forControlEvents:UIControlEventEditingChanged];
     UIToolbar *toolbar=[[UIToolbar alloc] initWithFrame:CGRectMake(0,0,[self contentWidth],44)];
     toolbar.items=@[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil],
-        [[UIBarButtonItem alloc] initWithTitle:@"Xong" style:UIBarButtonItemStyleDone target:self action:@selector(finishNumber)]];
+        [[UIBarButtonItem alloc] initWithTitle:@"Listo" style:UIBarButtonItemStyleDone target:self action:@selector(finishNumber)]];
     field.inputAccessoryView=toolbar;
     [row addSubview:field];[self.controls addObject:field];[self.scroll addSubview:row];return y+58;
 }
@@ -542,7 +542,7 @@
 }
 
 - (CGFloat)aimChooser:(CGFloat)y {
-    NSArray *names=@[@"Aim đầu",@"Aim cổ",@"Silent Aim"];
+    NSArray *names=@[@"Aim Cabeza",@"Aim Cuello",@"Silent Aim"];
     const NSInteger type=static_cast<int>(AimModePolicy::ReadType(ESPPrefsFloat(@"AimType",0)));
     NSString *summary=names[type];
     UIButton *chooser=[UIButton buttonWithType:UIButtonTypeSystem];chooser.tag=302;
@@ -550,7 +550,7 @@
     chooser.backgroundColor=[[UIColor whiteColor] colorWithAlphaComponent:0.05];
     chooser.contentHorizontalAlignment=UIControlContentHorizontalAlignmentLeft;
     chooser.contentEdgeInsets=UIEdgeInsetsMake(0,14,0,14);
-    [chooser setTitle:[NSString stringWithFormat:@"Loại aim   %@  %@",summary,self.aimExpanded ? @"▴" : @"▾"] forState:UIControlStateNormal];
+    [chooser setTitle:[NSString stringWithFormat:@"Tipo de aim   %@  %@",summary,self.aimExpanded ? @"▴" : @"▾"] forState:UIControlStateNormal];
     [chooser setTitleColor:MizzeMint() forState:UIControlStateNormal];
     chooser.titleLabel.font=MizzeFont(14, UIFontWeightSemibold);
     chooser.titleLabel.adjustsFontSizeToFitWidth=YES;
@@ -594,52 +594,52 @@
         const BOOL silent=AimModePolicy::ReadType(ESPPrefsFloat(@"AimType",0))==AimModePolicy::Type::Silent;
         const BOOL aimKill=ESPPrefsBool(@"AutoFire",NO);
         if (silent) {
-            y = [self toggle:@"Bật Silent Aim" key:@"SilentAim" fallback:NO y:y];
+            y = [self toggle:@"Activar Silent Aim" key:@"SilentAim" fallback:NO y:y];
         } else {
-            y=[self section:@"Kích hoạt" y:y];
+            y=[self section:@"Activación" y:y];
             y=[self activationPicker:y];
         }
-        y = [self toggle:@"Aimlag khi ngắm" key:@"AimLag" fallback:NO y:y];
-        y = [self toggle:@"Dây tới mục tiêu" key:@"AimTargetLine" fallback:YES y:y];
+        y = [self toggle:@"Aimlag al apuntar" key:@"AimLag" fallback:NO y:y];
+        y = [self toggle:@"Línea al objetivo" key:@"AimTargetLine" fallback:YES y:y];
         y = [self slider:@"FOV" key:(silent || aimKill) ? @"SilentFovSize" : @"FovSize"
             min:5 max:48 fallback:(silent || aimKill) ? 18 : 40 y:y];
-        y = [self toggle:@"Hiện vòng FOV" key:@"ShowFov" fallback:YES y:y];
+        y = [self toggle:@"Mostrar círculo FOV" key:@"ShowFov" fallback:YES y:y];
         y = [self toggle:@"AimKill" key:@"AutoFireFloating" fallback:NO y:y];
         if (silent || ESPPrefsBool(@"AutoFireFloating", NO))
-            y = [self slider:@"Tỷ lệ headshot" key:@"SilentHeadPercent" min:0 max:100 fallback:75 y:y];
-        y = [self section:@"Súng" y:y];
-        y = [self toggle:@"Bắn nhanh (2×)" key:@"FastFire" fallback:NO y:y];
-        y = [self toggle:@"Không nạp đạn" key:@"ShootNoReload" fallback:NO y:y];
-        y = [self disclosure:@"Cài đặt nâng cao" tag:702 expanded:self.advancedExpanded y:y];
+            y = [self slider:@"% Headshot" key:@"SilentHeadPercent" min:0 max:100 fallback:75 y:y];
+        y = [self section:@"Armas" y:y];
+        y = [self toggle:@"Disparo rápido (2×)" key:@"FastFire" fallback:NO y:y];
+        y = [self toggle:@"Sin recarga" key:@"ShootNoReload" fallback:NO y:y];
+        y = [self disclosure:@"Ajustes avanzados" tag:702 expanded:self.advancedExpanded y:y];
         if(self.advancedExpanded) {
-            if (silent) y = [self toggle:@"Tự chọn tầm Silent" key:@"SilentAutoConfig" fallback:YES y:y];
+            if (silent) y = [self toggle:@"Rango auto Silent" key:@"SilentAutoConfig" fallback:YES y:y];
             if (silent && !ESPPrefsBool(@"SilentAutoConfig", YES)) {
-                y = [self slider:@"Tầm chọn Silent" key:@"SilentMaxDistance" min:10 max:150 fallback:100 y:y];
+                y = [self slider:@"Rango Silent" key:@"SilentMaxDistance" min:10 max:150 fallback:100 y:y];
             }
         }
     } else if (self.page == 1) {
-        y = [self toggle:@"Bật ESP" key:@"ESPEnabled" fallback:YES y:y];
-        
+        y = [self toggle:@"Activar ESP" key:@"ESPEnabled" fallback:YES y:y];
+
         UIButton *preset = [UIButton buttonWithType:UIButtonTypeSystem];
         preset.frame = CGRectMake(0, y, [self contentWidth], 46); preset.tag = 300;
-        preset.layer.cornerRadius = 12; 
+        preset.layer.cornerRadius = 12;
         preset.backgroundColor = [MizzeMint() colorWithAlphaComponent:0.15];
-        [preset setTitle:@"⚡ Áp dụng ESP tối giản" forState:UIControlStateNormal];
+        [preset setTitle:@"⚡ Aplicar ESP mínimo" forState:UIControlStateNormal];
         [preset setTitleColor:MizzeMint() forState:UIControlStateNormal];
         preset.titleLabel.font = MizzeFont(14, UIFontWeightSemibold);
         [preset addTarget:self action:@selector(applyMinimalESP) forControlEvents:UIControlEventTouchUpInside];
         [self.scroll addSubview:preset]; [self.controls addObject:preset]; y += 54;
-        
-        y = [self toggle:@"Khung góc mảnh" key:@"CleanESP" fallback:YES y:y];
-        y = [self toggle:@"Tên người chơi" key:@"Name" fallback:YES y:y];
-        y = [self toggle:@"Thanh máu" key:@"Health" fallback:YES y:y];
-        y = [self toggle:@"Trục XYZ" key:@"Line" fallback:NO y:y];
-        y = [self toggle:@"Khung người chơi" key:@"Box" fallback:YES y:y];
-        y = [self toggle:@"Xương người chơi" key:@"Skeleton" fallback:NO y:y];
-        y = [self toggle:@"Điểm đánh dấu đầu" key:@"HeadRedDot" fallback:NO y:y];
-        y = [self toggle:@"Khoảng cách" key:@"Dis" fallback:YES y:y];
-        
-        y = [self section:@"Tùy chỉnh khung" y:y];
+
+        y = [self toggle:@"Marco limpio" key:@"CleanESP" fallback:YES y:y];
+        y = [self toggle:@"Nombre del jugador" key:@"Name" fallback:YES y:y];
+        y = [self toggle:@"Barra de vida" key:@"Health" fallback:YES y:y];
+        y = [self toggle:@"Ejes XYZ" key:@"Line" fallback:NO y:y];
+        y = [self toggle:@"Caja del jugador" key:@"Box" fallback:YES y:y];
+        y = [self toggle:@"Esqueleto" key:@"Skeleton" fallback:NO y:y];
+        y = [self toggle:@"Punto cabeza" key:@"HeadRedDot" fallback:NO y:y];
+        y = [self toggle:@"Distancia" key:@"Dis" fallback:YES y:y];
+
+        y = [self section:@"Estilo de caja" y:y];
         UISegmentedControl *boxStyle = [[UISegmentedControl alloc] initWithItems:@[@"2D", @"3D"]];
         boxStyle.frame = CGRectMake(0, y, [self contentWidth], 40);
         boxStyle.tag = 101;
@@ -648,19 +648,19 @@
         [self.scroll addSubview:boxStyle]; [self.controls addObject:boxStyle];
         y += 50;
         
-        y = [self slider:@"Tầm hiển thị ESP" key:@"ESPMaxDistance" min:50 max:500 fallback:150 y:y];
-        y = [self slider:@"Vàng khi máu ≤" key:@"HealthYellowPercent" min:10 max:90 fallback:50 y:y];
-        y = [self slider:@"Đỏ khi máu ≤" key:@"HealthRedPercent" min:5 max:80 fallback:25 y:y];
+        y = [self slider:@"Distancia ESP" key:@"ESPMaxDistance" min:50 max:500 fallback:150 y:y];
+        y = [self slider:@"Amarillo si vida ≤" key:@"HealthYellowPercent" min:10 max:90 fallback:50 y:y];
+        y = [self slider:@"Rojo si vida ≤" key:@"HealthRedPercent" min:5 max:80 fallback:25 y:y];
 
         y = [self section:@"FOV" y:y];
-        y = [self slider:@"Kích thước FOV" key:@"FovSize" min:5 max:48 fallback:40 y:y];
+        y = [self slider:@"Tamaño FOV" key:@"FovSize" min:5 max:48 fallback:40 y:y];
 
-        y = [self section:@"Màu sắc" y:y];
+        y = [self section:@"Colores" y:y];
         UIButton *colorShortcut = [UIButton buttonWithType:UIButtonTypeSystem];
         colorShortcut.frame = CGRectMake(0, y, [self contentWidth], 46);
         colorShortcut.layer.cornerRadius = 12;
         colorShortcut.backgroundColor = [MizzeMint() colorWithAlphaComponent:0.15];
-        [colorShortcut setTitle:@"🎨 Đổi màu ESP / FOV" forState:UIControlStateNormal];
+        [colorShortcut setTitle:@"🎨 Cambiar color ESP / FOV" forState:UIControlStateNormal];
         [colorShortcut setTitleColor:MizzeMint() forState:UIControlStateNormal];
         colorShortcut.titleLabel.font = MizzeFont(14, UIFontWeightSemibold);
         [colorShortcut addTarget:self action:@selector(goToColorsTab) forControlEvents:UIControlEventTouchUpInside];
@@ -679,37 +679,37 @@
         
         NSString *prefix = [self colorPrefix];
         float defaults[3] = {0.46f, 0.86f, 0.73f};
-        NSArray *names = @[@"Đỏ", @"Lục", @"Lam"], *suffixes = @[@"R", @"G", @"B"];
+        NSArray *names = @[@"Rojo", @"Verde", @"Azul"], *suffixes = @[@"R", @"G", @"B"];
         for (int i = 0; i < 3; ++i) y = [self slider:names[i] key:[prefix stringByAppendingString:suffixes[i]] min:0 max:1 fallback:defaults[i] y:y];
         [self updateSwatch];
     } else {
-        y = [self section:@"Nút nổi" y:y];
+        y = [self section:@"Botones flotantes" y:y];
         y = [self toggle:@"Ghost" key:@"GhostModeFloating" fallback:NO y:y];
         y = [self toggle:@"FakeLag" key:@"FakeLagFloating" fallback:NO y:y];
         y = [self toggle:@"Fly" key:@"FlyFloating" fallback:NO y:y];
-        y = [self toggle:@"Ẩn nút chức năng" key:@"HideFeatureButtons" fallback:NO y:y];
-        y = [self toggle:@"Nút Speed" key:@"RunSpeedFloating" fallback:ESPPrefsBool(@"RunSpeed",NO) y:y];
-        
-        y = [self section:@"Di chuyển" y:y];
+        y = [self toggle:@"Ocultar botones" key:@"HideFeatureButtons" fallback:NO y:y];
+        y = [self toggle:@"Botón Speed" key:@"RunSpeedFloating" fallback:ESPPrefsBool(@"RunSpeed",NO) y:y];
+
+        y = [self section:@"Movimiento" y:y];
         if (ESPPrefsBool(@"FlyFloating", NO))
-            y = [self slider:@"Độ cao Fly" key:@"FlyHeight" min:1 max:6 fallback:4 y:y];
+            y = [self slider:@"Altura Fly" key:@"FlyHeight" min:1 max:6 fallback:4 y:y];
         y = [self toggle:@"Speed" key:@"RunSpeed" fallback:NO y:y];
-        y = [self numberInput:@"Tốc độ (m/s)" key:@"RunSpeedValue" fallback:6 y:y];
-        
-        y = [self section:@"Hiệu ứng & Khác" y:y];
-        y = [self toggle:@"Spin · chỉ mình thấy" key:@"VisualSpin" fallback:NO y:y];
+        y = [self numberInput:@"Velocidad (m/s)" key:@"RunSpeedValue" fallback:6 y:y];
+
+        y = [self section:@"Efectos y Otros" y:y];
+        y = [self toggle:@"Spin · solo visible para ti" key:@"VisualSpin" fallback:NO y:y];
         if (ESPPrefsBool(@"VisualSpin",NO)) {
-            y = [self slider:@"Vòng / giây" key:@"VisualSpinSpeed" min:0.1 max:3 fallback:0.5 y:y];
+            y = [self slider:@"Vueltas / seg" key:@"VisualSpinSpeed" min:0.1 max:3 fallback:0.5 y:y];
             self.spinStatusLabel=[self label:@"" frame:CGRectMake(8,y,[self contentWidth]-16,38) size:12];
             self.spinStatusLabel.textColor=MizzeMuted();self.spinStatusLabel.numberOfLines=2;
             [self.scroll addSubview:self.spinStatusLabel];[self updateSpinStatus];y+=44;
         }
-        y = [self toggle:@"Ẩn khi chụp / quay" key:@"AnLive" fallback:NO y:y];
-        y = [self toggle:@"Giao diện tối" key:@"DarkTheme" fallback:YES y:y];
-        y = [self toggle:@"Tiết kiệm pin (30 FPS)" key:@"BalancedRender" fallback:NO y:y];
+        y = [self toggle:@"Ocultar en capturas" key:@"AnLive" fallback:NO y:y];
+        y = [self toggle:@"Modo oscuro" key:@"DarkTheme" fallback:YES y:y];
+        y = [self toggle:@"Ahorro de batería (30 FPS)" key:@"BalancedRender" fallback:NO y:y];
     }
     
-    UILabel *credit=[self label:@"FINE IOS" frame:CGRectMake(8,y+16,[self contentWidth]-16,20) size:10];
+    UILabel *credit=[self label:@"DAAE IOS" frame:CGRectMake(8,y+16,[self contentWidth]-16,20) size:10];
     credit.textColor=[[UIColor whiteColor] colorWithAlphaComponent:0.3];credit.textAlignment=NSTextAlignmentCenter;
     [self.scroll addSubview:credit];y+=50;
     
@@ -760,7 +760,7 @@
     if ([key isEqualToString:@"AnLive"] && ![UIView applyCaptureProtectionToRegisteredViews:sender.on]) {
         sender.on = NO; ESPPrefsSetBool(key, NO);
         [UIView applyCaptureProtectionToRegisteredViews:NO];
-        [self note:@"iOS này không hỗ trợ cơ chế ẩn hiện tại." y:self.scroll.contentSize.height];
+        [self note:@"Este iOS no soporta el modo oculto." y:self.scroll.contentSize.height];
         self.scroll.contentSize = CGSizeMake([self contentWidth], self.scroll.contentSize.height + 48);
     }
     if ([key isEqualToString:@"CleanESP"] && sender.on)
@@ -772,12 +772,12 @@
 
 - (void)updateSpinStatus {
     const auto state=PlayerModesRead();
-    NSString *text=@"Spin: chờ nhịp cuối của game";
+    NSString *text=@"Spin: esperando ciclo del juego";
     if(state.detail&&state.detail[0])text=[NSString stringWithUTF8String:state.detail];
-    else if(state.spinStatus==1)text=@"Spin: chờ nhân vật trong trận";
-    else if(state.spinStatus==2)text=@"Spin: chưa có mô hình xoay phù hợp";
-    else if(state.spinStatus==3)text=@"Spin: chờ góc xoay ổn định";
-    else if(state.spinStatus==4)text=[NSString stringWithFormat:@"Spin: đã áp dụng · %llu",(unsigned long long)state.spinApplies];
+    else if(state.spinStatus==1)text=@"Spin: esperando personaje en partida";
+    else if(state.spinStatus==2)text=@"Spin: modelo de rotación no disponible";
+    else if(state.spinStatus==3)text=@"Spin: esperando ángulo estable";
+    else if(state.spinStatus==4)text=[NSString stringWithFormat:@"Spin: aplicado · %llu",(unsigned long long)state.spinApplies];
     self.spinStatusLabel.text=text;
 }
 
