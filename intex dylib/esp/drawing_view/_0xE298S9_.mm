@@ -898,10 +898,10 @@ bool get_IsScoping(uint64_t p) { return isVaildPtr(p) && AimSelection::ScopeStat
     // Cập nhật chữ trên màn hình
     if (stats.inMatch) {
         if (totalEnemies > 0) {
-            self.countLabel.text = [NSString stringWithFormat:@"Địch: %d", totalEnemies];
+            self.countLabel.text = [NSString stringWithFormat:@"Enemigos: %d", totalEnemies];
             self.countLabel.textColor = [UIColor redColor]; // Màu đỏ khi có địch
         } else {
-            self.countLabel.text = @"FINE IOS";
+            self.countLabel.text = @"DAAE IOS";
             self.countLabel.textColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.8 alpha:1.0]; // Màu xanh Cyan khi không có địch
         }
     } else {
