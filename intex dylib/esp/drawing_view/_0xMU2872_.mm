@@ -125,6 +125,9 @@ static const CGFloat kMenuButtonSize = 44.0f;
     _menuButton.titleLabel.textAlignment = NSTextAlignmentCenter;
     [_menuButton addTarget:self action:@selector(togglePanel) forControlEvents:UIControlEventTouchUpInside];
     UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragNativeButton:)];
+    pan.cancelsTouchesInView = NO;
+    pan.delaysTouchesBegan = NO;
+    pan.delaysTouchesEnded = NO;
     [_menuButton addGestureRecognizer:pan];
     
     [self addSubview:_menuButton];
@@ -143,9 +146,16 @@ static const CGFloat kMenuButtonSize = 44.0f;
 }
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    // When the menu panel is open, let it receive all its own touches normally.
+    if (_presentedModMenu) {
+        UIView *hit = [super hitTest:point withEvent:event];
+        // Block only self — the panel view and its subviews must get touches.
+        return (hit == self) ? nil : hit;
+    }
+    // Menu closed: only the floating button and aux controls are interactive.
+    // Everything else passes through to the game underneath.
     UIView *hit = [super hitTest:point withEvent:event];
-    if (hit == self || (_presentedModMenu && hit == _presentedModMenu.view)) return nil;
-    return hit;
+    return (hit == self) ? nil : hit;
 }
 - (void)dragNativeButton:(UIPanGestureRecognizer *)pan {
     if (pan.state == UIGestureRecognizerStateBegan) _buttonDragStartCenter = _menuButton.center;
