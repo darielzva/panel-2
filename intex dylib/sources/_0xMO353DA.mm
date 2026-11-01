@@ -47,29 +47,62 @@
 - (void)setOn:(BOOL)on animated:(BOOL)animated {
     _on = on;
     self.selected = on;
-    // Glow view in parent row (tag 888 to avoid collisions)
+
+    // Glow view: only touch superview when it actually exists.
+    // MizzeMint() must NOT be called when superview is nil — it may
+    // dereference UIKit singletons that aren't ready during init.
     UIView *row = self.superview;
-    UIView *glowView = row ? [row viewWithTag:888] : nil;
-    if (!glowView && row) {
-        glowView = [[UIView alloc] initWithFrame:row.bounds];
-        glowView.layer.cornerRadius = 14;
-        glowView.tag = 888;
-        glowView.userInteractionEnabled = NO;
-        [row insertSubview:glowView atIndex:0];
+    UIView *glowView = nil;
+    if (row) {
+        glowView = [row viewWithTag:888];
+        if (!glowView) {
+            glowView = [[UIView alloc] initWithFrame:row.bounds];
+            glowView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+            glowView.layer.cornerRadius = 14;
+            glowView.tag = 888;
+            glowView.userInteractionEnabled = NO;
+            [row insertSubview:glowView atIndex:0];
+        }
     }
-    UIColor *glowTarget = on ? [MizzeMint() colorWithAlphaComponent:0.13] : [UIColor clearColor];
+
+    // Build glowTarget only when row exists to guarantee MizzeMint() is
+    // called in a fully initialised UIKit context.
+    UIColor *glowTarget = row
+        ? (on ? [MizzeMint() colorWithAlphaComponent:0.13] : [UIColor clearColor])
+        : nil;
+
+    // Weak capture avoids a retain cycle / use-after-free if the checkbox
+    // is released while the spring animation is still in flight.
+    __weak MizzeCheckBox *weakSelf = self;
     void (^updateUI)(void) = ^{
-        CGFloat thumbSize = self.bounds.size.height - 4;
-        CGFloat targetX = on ? (self.bounds.size.width - thumbSize - 2) : 2;
-        self.thumbView.frame = CGRectMake(targetX, 2, thumbSize, thumbSize);
-        self.trackView.backgroundColor = on ? MizzeMint() : [[UIColor whiteColor] colorWithAlphaComponent:0.15];
+        MizzeCheckBox *strongSelf = weakSelf;
+        if (!strongSelf) return;
+        CGFloat thumbSize = strongSelf.bounds.size.height - 4;
+        CGFloat targetX = on ? (strongSelf.bounds.size.width - thumbSize - 2) : 2;
+        strongSelf.thumbView.frame = CGRectMake(targetX, 2, thumbSize, thumbSize);
+        strongSelf.trackView.backgroundColor = on
+            ? MizzeMint()
+            : [[UIColor whiteColor] colorWithAlphaComponent:0.15];
     };
+
     if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
-        [UIView animateWithDuration:0.25 delay:0 usingSpringWithDamping:0.7 initialSpringVelocity:0.5 options:UIViewAnimationOptionCurveEaseInOut animations:updateUI completion:nil];
-        if (glowView) [UIView animateWithDuration:0.18 animations:^{ glowView.backgroundColor = glowTarget; }];
+        [UIView animateWithDuration:0.25
+                              delay:0
+             usingSpringWithDamping:0.7
+              initialSpringVelocity:0.5
+                            options:UIViewAnimationOptionCurveEaseInOut
+                         animations:updateUI
+                         completion:nil];
+        if (glowView && glowTarget) {
+            [UIView animateWithDuration:0.18 animations:^{
+                glowView.backgroundColor = glowTarget;
+            }];
+        }
     } else {
         updateUI();
-        if (glowView) glowView.backgroundColor = glowTarget;
+        if (glowView && glowTarget) {
+            glowView.backgroundColor = glowTarget;
+        }
     }
 }
 - (void)layoutSubviews {
@@ -391,16 +424,19 @@
     
     MizzeCheckBox *sw = [[MizzeCheckBox alloc] initWithFrame:CGRectMake(width - 60, 10, 46, 26)];
     sw.accessibilityLabel = title;
-    sw.on = ESPPrefsBool(key, fallback);
     objc_setAssociatedObject(sw, "key", key, OBJC_ASSOCIATION_COPY_NONATOMIC);
     [sw addTarget:self action:@selector(checkboxPressed:) forControlEvents:UIControlEventTouchUpInside];
-    
+
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleRow:)];
     tap.delegate = self;
     objc_setAssociatedObject(tap, "switch", sw, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [row addGestureRecognizer:tap];
-    
-    [row addSubview:sw]; [self.controls addObject:sw]; [self.scroll addSubview:row];
+
+    // Add sw to its superview BEFORE setting .on so that setOn:animated:
+    // finds a non-nil self.superview and can safely call MizzeMint().
+    [row addSubview:sw];
+    sw.on = ESPPrefsBool(key, fallback);
+    [self.controls addObject:sw]; [self.scroll addSubview:row];
     return y + 52;
 }
 
