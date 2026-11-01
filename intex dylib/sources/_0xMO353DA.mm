@@ -48,9 +48,9 @@
     _on = on;
     self.selected = on;
 
-    // Glow view: only touch superview when it actually exists.
-    // MizzeMint() must NOT be called when superview is nil — it may
-    // dereference UIKit singletons that aren't ready during init.
+    // Glow view logic: superview MUST exist before touching MizzeMint().
+    // Calling MizzeMint() without an active UIKit context (e.g. during
+    // initWithFrame: before the view is in the hierarchy) causes EXC_BAD_ACCESS.
     UIView *row = self.superview;
     UIView *glowView = nil;
     if (row) {
@@ -65,13 +65,13 @@
         }
     }
 
-    // Build glowTarget only when row exists to guarantee MizzeMint() is
+    // glowTarget computed only when row != nil, so MizzeMint() is always
     // called in a fully initialised UIKit context.
     UIColor *glowTarget = row
         ? (on ? [MizzeMint() colorWithAlphaComponent:0.13] : [UIColor clearColor])
         : nil;
 
-    // Weak capture avoids a retain cycle / use-after-free if the checkbox
+    // Weak capture prevents retain cycle / use-after-free if the checkbox
     // is released while the spring animation is still in flight.
     __weak MizzeCheckBox *weakSelf = self;
     void (^updateUI)(void) = ^{
@@ -424,19 +424,16 @@
     
     MizzeCheckBox *sw = [[MizzeCheckBox alloc] initWithFrame:CGRectMake(width - 60, 10, 46, 26)];
     sw.accessibilityLabel = title;
+    sw.on = ESPPrefsBool(key, fallback);
     objc_setAssociatedObject(sw, "key", key, OBJC_ASSOCIATION_COPY_NONATOMIC);
     [sw addTarget:self action:@selector(checkboxPressed:) forControlEvents:UIControlEventTouchUpInside];
-
+    
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleRow:)];
     tap.delegate = self;
     objc_setAssociatedObject(tap, "switch", sw, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [row addGestureRecognizer:tap];
-
-    // Add sw to its superview BEFORE setting .on so that setOn:animated:
-    // finds a non-nil self.superview and can safely call MizzeMint().
-    [row addSubview:sw];
-    sw.on = ESPPrefsBool(key, fallback);
-    [self.controls addObject:sw]; [self.scroll addSubview:row];
+    
+    [row addSubview:sw]; [self.controls addObject:sw]; [self.scroll addSubview:row];
     return y + 52;
 }
 
@@ -450,42 +447,42 @@
     NSNumber *choice=objc_getAssociatedObject(sender,"choice");
     if (choice) {
         if ([key isEqualToString:@"AimType"]) {
-            // Immediately deactivate all aim-type rows, activate only the tapped one
-            NSArray *aimRows=objc_getAssociatedObject(sender,"aimRows");
+            // Immediately deactivate all aim-type siblings, activate only the tapped one
+            NSArray *aimRows = objc_getAssociatedObject(sender, "aimRows");
             if (aimRows) {
                 for (MizzeCheckBox *box in aimRows)
-                    [box setOn:(box==sender) animated:YES];
+                    [box setOn:(box == sender) animated:YES];
             }
-            self.aimExpanded=NO;
-            if ((int)AimModePolicy::ReadType(ESPPrefsFloat(key,0)) == choice.intValue) {
-                [self rebuildAnimated];return;
+            self.aimExpanded = NO;
+            if ((int)AimModePolicy::ReadType(ESPPrefsFloat(key, 0)) == choice.intValue) {
+                [self rebuildAnimated]; return;
             }
-            ESPPrefsSetFloat(key,choice.floatValue);
-            ESPPrefsSetFloat(@"AimActivation",static_cast<int>(AimModePolicy::AfterTypeSelection(
+            ESPPrefsSetFloat(key, choice.floatValue);
+            ESPPrefsSetFloat(@"AimActivation", static_cast<int>(AimModePolicy::AfterTypeSelection(
                 AimModePolicy::ReadType(choice.floatValue))));
-            ESPPrefsSetBool(@"SilentAim",NO);
+            ESPPrefsSetBool(@"SilentAim", NO);
         } else {
-            // Immediately deactivate all activation rows, activate only the tapped one
-            NSArray *actRows=objc_getAssociatedObject(sender,"actRows");
-            BOOL wasOn=sender.on;
+            // Immediately deactivate all activation siblings, activate only the tapped one
+            NSArray *actRows = objc_getAssociatedObject(sender, "actRows");
+            BOOL wasOn = sender.on;
             if (actRows) {
                 for (MizzeCheckBox *box in actRows)
                     [box setOn:NO animated:YES];
                 if (!wasOn) [sender setOn:YES animated:YES];
             }
-            ESPPrefsSetFloat(key,wasOn ? 0 : choice.floatValue);
-            const NSInteger active=static_cast<int>(AimModePolicy::ReadActivation(ESPPrefsFloat(key,0)));
+            ESPPrefsSetFloat(key, wasOn ? 0 : choice.floatValue);
+            const NSInteger active = static_cast<int>(AimModePolicy::ReadActivation(ESPPrefsFloat(key, 0)));
             if (!actRows) {
                 for (UIControl *control in self.controls) {
                     if (![control isKindOfClass:MizzeCheckBox.class] ||
-                        ![objc_getAssociatedObject(control,"key") isEqualToString:key]) continue;
-                    NSNumber *value=objc_getAssociatedObject(control,"choice");
-                    [(MizzeCheckBox *)control setOn:value.integerValue==active animated:YES];
+                        ![objc_getAssociatedObject(control, "key") isEqualToString:key]) continue;
+                    NSNumber *value = objc_getAssociatedObject(control, "choice");
+                    [(MizzeCheckBox *)control setOn:value.integerValue == active animated:YES];
                 }
             }
-            ESPClearAimLock();ESPSyncFromPrefs();return;
+            ESPClearAimLock(); ESPSyncFromPrefs(); return;
         }
-        ESPClearAimLock();ESPSyncFromPrefs();[self rebuildAnimated];
+        ESPClearAimLock(); ESPSyncFromPrefs(); [self rebuildAnimated];
         return;
     }
     [sender setOn:!sender.on animated:YES];[self toggleChanged:sender];
@@ -517,7 +514,7 @@
     }
     // Attach actRows to each box so checkboxPressed: can deactivate siblings
     for (MizzeCheckBox *box in actRows)
-        objc_setAssociatedObject(box,"actRows",actRows,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        objc_setAssociatedObject(box, "actRows", actRows, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     return y+110;
 }
 
@@ -635,7 +632,7 @@
         }
         // Attach aimRows to each box so checkboxPressed: can deactivate siblings
         for (MizzeCheckBox *box in aimRows)
-            objc_setAssociatedObject(box,"aimRows",aimRows,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            objc_setAssociatedObject(box, "aimRows", aimRows, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
     return y;
 }
