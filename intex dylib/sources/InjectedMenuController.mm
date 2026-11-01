@@ -5,12 +5,29 @@
 #import "../esp/drawing_view/ESPPrefs.h"
 #import "../esp/drawing_view/menu.h"
 
+// Passthrough root view: never captures touches for itself.
+// Subviews (_0xDAB2826 has userInteractionEnabled=NO; _0xB1872A2 has its
+// own hitTest that returns nil for self) each handle their own hits.
+// Without this, UIKit walks up and assigns unmatched touches to this view,
+// blocking the game from receiving them simultaneously.
+@interface _MizzeRootPassthroughView : UIView @end
+@implementation _MizzeRootPassthroughView
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hit = [super hitTest:point withEvent:event];
+    return (hit == self) ? nil : hit;
+}
+@end
+
 @interface InjectedMenuController ()
 @property(nonatomic,strong) UIView   *espView;
 @property(nonatomic,strong) _0xB1872A2 *menuControl;
 @end
 
 @implementation InjectedMenuController
+
+- (void)loadView {
+    self.view = [[_MizzeRootPassthroughView alloc] initWithFrame:UIScreen.mainScreen.bounds];
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
