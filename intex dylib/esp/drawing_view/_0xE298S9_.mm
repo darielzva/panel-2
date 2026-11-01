@@ -394,7 +394,7 @@ static void ESPTextCallback(void *ctx, NSString *str, CGRect frame,
     self.countLabel.textAlignment = NSTextAlignmentCenter;
     self.countLabel.textColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0]; // Màu Đỏ
     self.countLabel.font = [UIFont boldSystemFontOfSize:18];
-    self.countLabel.text = @"FINE IOS"; // Mặc định ban đầu
+    self.countLabel.text = @"DAAE IOS"; // Mặc định ban đầu
     [self addSubview:self.countLabel];
 
     return self;
@@ -692,7 +692,7 @@ static void ESPTextCallback(void *ctx, NSString *str, CGRect frame,
     [self resetTextLayers];
     
     if (self.countLabel) {
-        self.countLabel.text = @"FINE IOS";
+        self.countLabel.text = @"DAAE IOS";
         self.countLabel.textColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.8 alpha:1.0]; // Màu Cyan
     }
 }
@@ -905,7 +905,7 @@ bool get_IsScoping(uint64_t p) { return isVaildPtr(p) && AimSelection::ScopeStat
             self.countLabel.textColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.8 alpha:1.0]; // Màu xanh Cyan khi không có địch
         }
     } else {
-        self.countLabel.text = @"FINE IOS"; // Đề phòng trường hợp stats.inMatch = false
+        self.countLabel.text = @"DAAE IOS"; // Đề phòng trường hợp stats.inMatch = false
         self.countLabel.textColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.8 alpha:1.0]; 
     }
 
