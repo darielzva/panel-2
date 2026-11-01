@@ -18,101 +18,67 @@ static UIImage *SFSym(NSString *name, CGFloat pts, UIImageSymbolWeight w) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IDIOMA — 0=EN (por defecto), 1=ES, 2=VI
+// IDIOMA — 0=EN (default), 1=ES, 2=VI
 // ─────────────────────────────────────────────────────────────────────────────
 static NSInteger DAAELang(void) {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
-    if (![ud objectForKey:@"DAAE.lang"]) return 0; // EN por defecto
+    if (![ud objectForKey:@"DAAE.lang"]) return 0;
     NSInteger v = [ud integerForKey:@"DAAE.lang"];
     return (v >= 0 && v <= 2) ? v : 0;
 }
 static void DAAESetLang(NSInteger l) {
     [[NSUserDefaults standardUserDefaults] setInteger:l forKey:@"DAAE.lang"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PALETA — oscuro neutro (gris, no marrón)
-// ─────────────────────────────────────────────────────────────────────────────
-static UIColor *PanelBG(void)     { return [UIColor colorWithWhite:0.12 alpha:0.96]; }
-static UIColor *RowOFF(void)      { return [UIColor colorWithWhite:1 alpha:0.07]; }
-static UIColor *RowON(void)       { return [UIColor colorWithWhite:1 alpha:0.13]; }
-static UIColor *SectionClr(void)  { return [UIColor colorWithWhite:1 alpha:0.40]; }
-static UIColor *LblPrimary(void)  { return UIColor.whiteColor; }
-static UIColor *LblSec(void)      { return [UIColor colorWithWhite:1 alpha:0.60]; }
-static UIColor *LblTer(void)      { return [UIColor colorWithWhite:1 alpha:0.38]; }
-static UIColor *CheckON(void)     { return [UIColor colorWithWhite:1 alpha:0.22]; }
-static UIColor *CheckOFF(void)    { return [UIColor colorWithWhite:1 alpha:0.12]; }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LABEL TRILINGÜE — EN bold, ES medium dimmed, VI small dimmer
-// Tal y como aparece en las imágenes de referencia
-// ─────────────────────────────────────────────────────────────────────────────
-static UILabel *TriLabel(NSString *en, NSString *es, NSString *vi, CGFloat maxW) {
-    NSInteger lang = DAAELang();
-    // Siempre 3 líneas: idioma primario arriba (más grande), los otros 2 debajo
-    NSString *line0, *line1, *line2;
-    NSDictionary *attr0, *attr1, *attr2;
-
-    NSDictionary *aEN = @{NSFontAttributeName:[UIFont systemFontOfSize:15 weight:UIFontWeightSemibold],
-                          NSForegroundColorAttributeName:LblPrimary()};
-    NSDictionary *aES = @{NSFontAttributeName:[UIFont systemFontOfSize:12 weight:UIFontWeightRegular],
-                          NSForegroundColorAttributeName:LblSec()};
-    NSDictionary *aVI = @{NSFontAttributeName:[UIFont systemFontOfSize:11 weight:UIFontWeightRegular],
-                          NSForegroundColorAttributeName:LblTer()};
-
-    switch (lang) {
-        case 1:  // ES primario
-            line0 = es; attr0 = @{NSFontAttributeName:[UIFont systemFontOfSize:15 weight:UIFontWeightSemibold], NSForegroundColorAttributeName:LblPrimary()};
-            line1 = en; attr1 = aEN; // reutilizamos el mismo tamaño pero dim
-            attr1 = @{NSFontAttributeName:[UIFont systemFontOfSize:12 weight:UIFontWeightRegular], NSForegroundColorAttributeName:LblSec()};
-            line2 = vi; attr2 = aVI;
-            break;
-        case 2:  // VI primario
-            line0 = vi; attr0 = @{NSFontAttributeName:[UIFont systemFontOfSize:15 weight:UIFontWeightSemibold], NSForegroundColorAttributeName:LblPrimary()};
-            line1 = en; attr1 = @{NSFontAttributeName:[UIFont systemFontOfSize:12 weight:UIFontWeightRegular], NSForegroundColorAttributeName:LblSec()};
-            line2 = es; attr2 = aVI;
-            break;
-        default: // EN primario
-            line0 = en; attr0 = aEN;
-            line1 = es; attr1 = aES;
-            line2 = vi; attr2 = aVI;
-            break;
+// Devuelve el string en el idioma activo
+static NSString *DAAEStr(NSString *en, NSString *es, NSString *vi) {
+    switch (DAAELang()) {
+        case 1: return es;
+        case 2: return vi;
+        default: return en;
     }
-
-    NSMutableAttributedString *as = [NSMutableAttributedString new];
-    [as appendAttributedString:[[NSAttributedString alloc] initWithString:line0 attributes:attr0]];
-    [as appendAttributedString:[[NSAttributedString alloc] initWithString:[@"\n" stringByAppendingString:line1] attributes:attr1]];
-    [as appendAttributedString:[[NSAttributedString alloc] initWithString:[@"\n" stringByAppendingString:line2] attributes:attr2]];
-
-    UILabel *l = [[UILabel alloc] init];
-    l.attributedText = as;
-    l.numberOfLines  = 0;
-    CGSize sz = [as boundingRectWithSize:CGSizeMake(maxW, 9999)
-                                 options:NSStringDrawingUsesLineFragmentOrigin
-                                 context:nil].size;
-    l.frame = CGRectMake(0, 0, maxW, ceil(sz.height) + 1);
-    return l;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CHECKMARK CIRCLE
+// AIM TYPE — raw float persistida; -1 = sin aim
+// ─────────────────────────────────────────────────────────────────────────────
+static float  AimRaw(void)     { return ESPPrefsFloat(@"AimType", -1); }
+static BOOL   AimActive(void)  { return AimRaw() >= 0; }
+static NSInteger AimIdx(void)  { return AimActive() ? (NSInteger)AimRaw() : -1; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PALETA — glass: panel casi transparente, el blur hace el tono
+// ─────────────────────────────────────────────────────────────────────────────
+static UIColor *PanelBG(void)     { return [UIColor colorWithWhite:0.08 alpha:0.82]; }
+static UIColor *RowOFF(void)      { return [UIColor colorWithWhite:1 alpha:0.07]; }
+static UIColor *RowON(void)       { return [UIColor colorWithWhite:1 alpha:0.14]; }
+static UIColor *SectionClr(void)  { return [UIColor colorWithWhite:1 alpha:0.38]; }
+static UIColor *LblMain(void)     { return UIColor.whiteColor; }
+static UIColor *LblDim(void)      { return [UIColor colorWithWhite:1 alpha:0.55]; }
+static UIColor *CheckON(void)     { return [UIColor colorWithWhite:1 alpha:0.22]; }
+static UIColor *CheckOFF(void)    { return [UIColor colorWithWhite:1 alpha:0.11]; }
+static UIColor *SidebarBG(void)   { return [UIColor colorWithWhite:0 alpha:0.12]; }
+static UIColor *HeaderBG(void)    { return [UIColor colorWithWhite:1 alpha:0.05]; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHECKMARK CIRCLE — igual a las imágenes: círculo siempre visible,
+// checkmark SF Symbol visible solo cuando ON
 // ─────────────────────────────────────────────────────────────────────────────
 @interface DAAECheck : UIView
 @property (nonatomic, assign) BOOL on;
 - (void)setOn:(BOOL)on animated:(BOOL)animated;
 @end
-@implementation DAAECheck {
-    UIImageView *_iv;
-}
+@implementation DAAECheck { UIImageView *_iv; }
 - (instancetype)initWithFrame:(CGRect)f {
     if ((self = [super initWithFrame:f])) {
         self.layer.cornerRadius = f.size.width / 2.0;
         self.userInteractionEnabled = NO;
-        UIImage *img = SFSym(@"checkmark", 12, UIImageSymbolWeightHeavy);
-        _iv = [[UIImageView alloc] initWithImage:img];
-        _iv.tintColor   = [UIColor colorWithWhite:0.85 alpha:1.0];
+        _iv = [[UIImageView alloc] initWithImage:
+            SFSym(@"checkmark", 13, UIImageSymbolWeightHeavy)];
+        _iv.tintColor   = [UIColor colorWithWhite:0.9 alpha:1.0];
         _iv.contentMode = UIViewContentModeScaleAspectFit;
-        _iv.frame = CGRectInset(self.bounds, 6, 6);
+        _iv.frame = CGRectInset(self.bounds, 7, 7);
         [self addSubview:_iv];
         [self setOn:NO animated:NO];
     }
@@ -126,14 +92,13 @@ static UILabel *TriLabel(NSString *en, NSString *es, NSString *vi, CGFloat maxW)
         self->_iv.hidden = !on;
     };
     if (anim) [UIView animateWithDuration:0.18 delay:0
-                                  options:UIViewAnimationOptionCurveEaseInOut
-                               animations:upd completion:nil];
+        options:UIViewAnimationOptionCurveEaseInOut animations:upd completion:nil];
     else upd();
 }
 @end
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TOGGLE ROW — fondo gris translúcido ON con border blanco
+// TOGGLE ROW — label monolingüe, checkmark circle derecha
 // ─────────────────────────────────────────────────────────────────────────────
 @interface DAAERow : UIButton
 @property (nonatomic, strong) DAAECheck *check;
@@ -142,34 +107,31 @@ static UILabel *TriLabel(NSString *en, NSString *es, NSString *vi, CGFloat maxW)
 - (void)_applyStyle:(BOOL)on;
 @end
 @implementation DAAERow
-- (instancetype)initWithEN:(NSString *)en ES:(NSString *)es VI:(NSString *)vi
-                        on:(BOOL)on width:(CGFloat)w {
-    // Ancho efectivo de label — dejamos 16 padding izq + 52 para check + 14 padding der
-    CGFloat labelW = w - 82;
-    UILabel *measure = TriLabel(en, es, vi, labelW);
-    CGFloat contentH = MAX(68.0, measure.bounds.size.height + 24);
-    if ((self = [super initWithFrame:CGRectMake(0, 0, w, contentH)])) {
+- (instancetype)initWithLabel:(NSString *)txt on:(BOOL)on width:(CGFloat)w {
+    // Alto fijo 60pt — coincide con la referencia
+    if ((self = [super initWithFrame:CGRectMake(0, 0, w, 60)])) {
         self.toggleOn = on;
         [self _applyStyle:on];
-        UILabel *lbl = TriLabel(en, es, vi, labelW);
-        CGFloat lblH = lbl.bounds.size.height;
-        lbl.frame = CGRectMake(16, (contentH - lblH) / 2.0, labelW, lblH);
+
+        UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(18, 0, w - 74, 60)];
+        lbl.text                = txt;
+        lbl.textColor           = LblMain();
+        lbl.font                = [UIFont systemFontOfSize:15 weight:UIFontWeightSemibold];
         lbl.userInteractionEnabled = NO;
         [self addSubview:lbl];
-        self.check = [[DAAECheck alloc] initWithFrame:
-            CGRectMake(w - 52, (contentH - 32) / 2.0, 32, 32)];
+
+        self.check = [[DAAECheck alloc] initWithFrame:CGRectMake(w - 52, 14, 32, 32)];
         [self.check setOn:on animated:NO];
         [self addSubview:self.check];
-        [self addTarget:self action:@selector(_tap)
-            forControlEvents:UIControlEventTouchUpInside];
+        [self addTarget:self action:@selector(_tap) forControlEvents:UIControlEventTouchUpInside];
     }
     return self;
 }
 - (void)_applyStyle:(BOOL)on {
     self.backgroundColor    = on ? RowON() : RowOFF();
-    self.layer.cornerRadius = 16;
-    self.layer.borderWidth  = on ? 0.8 : 0;
-    self.layer.borderColor  = on ? [UIColor colorWithWhite:1 alpha:0.22].CGColor
+    self.layer.cornerRadius = 14;
+    self.layer.borderWidth  = on ? 0.7 : 0;
+    self.layer.borderColor  = on ? [UIColor colorWithWhite:1 alpha:0.20].CGColor
                                  : [UIColor clearColor].CGColor;
     self.clipsToBounds = YES;
 }
@@ -177,47 +139,44 @@ static UILabel *TriLabel(NSString *en, NSString *es, NSString *vi, CGFloat maxW)
     self.toggleOn = !self.toggleOn;
     [self.check setOn:self.toggleOn animated:YES];
     BOOL nowOn = self.toggleOn;
-    [UIView animateWithDuration:0.18 delay:0
-                        options:UIViewAnimationOptionCurveEaseInOut
-                     animations:^{ [self _applyStyle:nowOn]; }
-                     completion:nil];
+    [UIView animateWithDuration:0.18 delay:0 options:UIViewAnimationOptionCurveEaseInOut
+                     animations:^{ [self _applyStyle:nowOn]; } completion:nil];
     if (self.onChanged) self.onChanged(self.toggleOn);
 }
 @end
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLIDER ROW
+// SLIDER ROW — fondo RowOFF, label monolingüe, slider UIKit
 // ─────────────────────────────────────────────────────────────────────────────
 @interface DAAESlider : UIView
 @end
 @implementation DAAESlider
-- (instancetype)initWithEN:(NSString *)en ES:(NSString *)es VI:(NSString *)vi
-                       key:(NSString *)key min:(float)mn max:(float)mx
-                  fallback:(float)fb width:(CGFloat)w {
-    CGFloat labelW = w - 90;
-    UILabel *measure = TriLabel(en, es, vi, labelW);
-    CGFloat contentH = MAX(80.0, measure.bounds.size.height + 38);
-    if ((self = [super initWithFrame:CGRectMake(0, 0, w, contentH)])) {
+- (instancetype)initWithLabel:(NSString *)txt key:(NSString *)key
+                          min:(float)mn max:(float)mx fallback:(float)fb width:(CGFloat)w {
+    if ((self = [super initWithFrame:CGRectMake(0, 0, w, 72)])) {
         self.backgroundColor    = RowOFF();
-        self.layer.cornerRadius = 16;
-        UILabel *lbl = TriLabel(en, es, vi, labelW);
-        CGFloat lblH = lbl.bounds.size.height;
-        lbl.frame = CGRectMake(16, 10, labelW, lblH);
+        self.layer.cornerRadius = 14;
+
+        UILabel *lbl = [[UILabel alloc] initWithFrame:CGRectMake(18, 8, w - 90, 22)];
+        lbl.text      = txt;
+        lbl.textColor = LblMain();
+        lbl.font      = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
         [self addSubview:lbl];
-        UILabel *val = [[UILabel alloc] initWithFrame:CGRectMake(w - 66, 10, 54, 22)];
+
+        UILabel *val = [[UILabel alloc] initWithFrame:CGRectMake(w - 64, 8, 52, 22)];
         val.textAlignment = NSTextAlignmentRight;
-        val.textColor = LblPrimary();
-        val.font = [UIFont systemFontOfSize:14 weight:UIFontWeightBold];
+        val.textColor = LblMain();
+        val.font      = [UIFont systemFontOfSize:14 weight:UIFontWeightBold];
         float cur = ESPPrefsFloat(key, fb);
         val.text = [NSString stringWithFormat:@"%.0f", cur];
         [self addSubview:val];
-        UISlider *sl = [[UISlider alloc]
-            initWithFrame:CGRectMake(14, contentH - 30, w - 28, 22)];
+
+        UISlider *sl = [[UISlider alloc] initWithFrame:CGRectMake(14, 40, w - 28, 22)];
         sl.minimumValue          = mn;
         sl.maximumValue          = mx;
         sl.value                 = cur;
         sl.minimumTrackTintColor = [UIColor colorWithWhite:1 alpha:0.85];
-        sl.maximumTrackTintColor = [UIColor colorWithWhite:1 alpha:0.20];
+        sl.maximumTrackTintColor = [UIColor colorWithWhite:1 alpha:0.18];
         sl.thumbTintColor        = UIColor.whiteColor;
         objc_setAssociatedObject(sl, "valLbl", val, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         objc_setAssociatedObject(sl, "espKey", key, OBJC_ASSOCIATION_COPY_NONATOMIC);
@@ -236,23 +195,23 @@ static UILabel *TriLabel(NSString *en, NSString *es, NSString *vi, CGFloat maxW)
 @end
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FILA DE INFO (settings)
+// INFO ROW — settings
 // ─────────────────────────────────────────────────────────────────────────────
-static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL accent) {
+static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL dim) {
     UIView *row = [[UIView alloc] initWithFrame:CGRectMake(0, 0, w, 52)];
     row.backgroundColor    = RowOFF();
-    row.layer.cornerRadius = 16;
+    row.layer.cornerRadius = 14;
 
     UILabel *tl = [[UILabel alloc] initWithFrame:CGRectMake(16, 0, w * 0.45, 52)];
-    tl.text = title;
-    tl.textColor = LblPrimary();
-    tl.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    tl.text      = title;
+    tl.textColor = LblMain();
+    tl.font      = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
     [row addSubview:tl];
 
-    UILabel *vl = [[UILabel alloc] initWithFrame:CGRectMake(w * 0.45, 0, w * 0.50 - 16, 52)];
-    vl.text = value;
-    vl.textColor = accent ? [UIColor colorWithWhite:1 alpha:0.50] : LblSec();
-    vl.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
+    UILabel *vl = [[UILabel alloc] initWithFrame:CGRectMake(w * 0.44, 0, w * 0.52 - 8, 52)];
+    vl.text          = value;
+    vl.textColor     = dim ? LblDim() : LblMain();
+    vl.font          = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
     vl.textAlignment = NSTextAlignmentRight;
     [row addSubview:vl];
     return row;
@@ -267,51 +226,50 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL accent)
 @property (nonatomic, strong) UIView             *sidebar;
 @property (nonatomic, strong) UIView             *contentArea;
 @property (nonatomic, strong) UIScrollView       *scroll;
-@property (nonatomic, assign) NSInteger  page;          // 0=ESP 1=Aim 2=Colors 3=Misc 4=Settings
-@property (nonatomic, assign) NSInteger  colorTarget;   // 0=Box 1=FOV
+@property (nonatomic, assign) NSInteger  page;         // 0=ESP 1=Aim 2=Colors 3=Misc 4=Settings
+@property (nonatomic, assign) NSInteger  colorTarget;  // 0=Box 1=FOV
 @property (nonatomic, assign) CGFloat    builtWidth;
 @property (nonatomic, strong) NSMutableArray<UIView *> *controls;
-@property (nonatomic, strong) UILabel  *spinStatusLabel;
-@property (nonatomic, strong) NSTimer  *spinStatusTimer;
-@property (nonatomic, assign) NSInteger pointer;
-@property (nonatomic, assign) CGPoint   began;
-@property (nonatomic, assign) CGPoint   panelOrigin;
-@property (nonatomic, assign) CGFloat   scrollOrigin;
-@property (nonatomic, assign) BOOL      dragging;
-@property (nonatomic, assign) BOOL      scrolling;
+@property (nonatomic, strong) UILabel   *spinStatusLabel;
+@property (nonatomic, strong) NSTimer   *spinStatusTimer;
+@property (nonatomic, assign) NSInteger  pointer;
+@property (nonatomic, assign) CGPoint    began;
+@property (nonatomic, assign) CGPoint    panelOrigin;
+@property (nonatomic, assign) CGFloat    scrollOrigin;
+@property (nonatomic, assign) BOOL       dragging;
+@property (nonatomic, assign) BOOL       scrolling;
 @property (nonatomic, strong) UIControl *activeControl;
 @end
 
 @implementation _0xDEADBEEE
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DEFAULTS
+// applyDefaults — AimType default -1 (sin aim)
 // ─────────────────────────────────────────────────────────────────────────────
 - (void)applyDefaults {
-    NSDictionary *defaults = @{
-        @"ESPEnabled":@NO, @"Box":@NO, @"Box3D":@NO, @"CleanESP":@NO,
-        @"Name":@NO, @"Health":@NO, @"Line":@NO, @"Skeleton":@NO,
-        @"HeadRedDot":@NO, @"Dis":@NO, @"ShowFov":@YES,
-        @"AimLag":@NO, @"AimTargetLine":@NO, @"SilentAim":@NO,
-        @"AutoFire":@NO, @"AutoFireFloating":@NO, @"FastFire":@NO,
-        @"ShootNoReload":@NO, @"GhostModeFloating":@NO, @"FakeLagFloating":@NO,
-        @"FlyFloating":@NO, @"RunSpeedFloating":@NO, @"RunSpeed":@NO,
-        @"VisualSpin":@NO, @"AnLive":@NO, @"DarkTheme":@YES,
-        @"BalancedRender":@NO, @"HideFeatureButtons":@NO,
-        @"AimType":@(0.0f), @"AimActivation":@(1.0f),
-        @"FovSize":@(40.0f), @"SilentFovSize":@(18.0f),
-    };
     NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
     if ([ud objectForKey:@"_MizzeDefaultsApplied"]) return;
-    for (NSString *key in defaults) {
-        id val = defaults[key];
-        if (![val isKindOfClass:NSNumber.class]) continue;
-        const char *t = ((NSNumber *)val).objCType;
-        if (strcmp(t,@encode(BOOL))==0||strcmp(t,@encode(bool))==0||strcmp(t,@encode(char))==0)
-            ESPPrefsSetBool(key, ((NSNumber *)val).boolValue);
-        else
-            ESPPrefsSetFloat(key, ((NSNumber *)val).floatValue);
-    }
+
+    // Booleanos — todos OFF por defecto excepto ShowFov
+    for (NSString *k in @[@"ESPEnabled",@"Box",@"Box3D",@"CleanESP",@"Name",@"Health",
+                           @"Line",@"Skeleton",@"HeadRedDot",@"Dis",@"AimLag",
+                           @"AimTargetLine",@"SilentAim",@"AutoFire",@"AutoFireFloating",
+                           @"FastFire",@"ShootNoReload",@"GhostModeFloating",@"FakeLagFloating",
+                           @"FlyFloating",@"RunSpeedFloating",@"RunSpeed",@"VisualSpin",
+                           @"AnLive",@"BalancedRender",@"HideFeatureButtons"])
+        ESPPrefsSetBool(k, NO);
+    ESPPrefsSetBool(@"ShowFov",    YES);
+    ESPPrefsSetBool(@"DarkTheme",  YES);
+
+    // Floats
+    ESPPrefsSetFloat(@"AimType",        -1);   // SIN aim por defecto
+    ESPPrefsSetFloat(@"AimActivation",   1);
+    ESPPrefsSetFloat(@"FovSize",        40);
+    ESPPrefsSetFloat(@"SilentFovSize",  18);
+    ESPPrefsSetFloat(@"RunSpeedValue",   6);
+    ESPPrefsSetFloat(@"FlyHeight",       4);
+    ESPPrefsSetFloat(@"VisualSpinSpeed", 0.5);
+
     ESPPrefsSetBool(@"ExplicitAimMenuV1", YES);
     [ud setBool:YES forKey:@"_MizzeDefaultsApplied"];
     [ud synchronize];
@@ -338,46 +296,46 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL accent)
                 [s updateSpinStatus];
         }];
 
-    // Blur oscuro detrás del panel
+    // ── Blur glassmorphism — hace el efecto translúcido
     self.blurBG = [[UIVisualEffectView alloc] initWithEffect:
         [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterialDark]];
-    self.blurBG.layer.cornerRadius = 22;
-    self.blurBG.clipsToBounds = YES;
+    self.blurBG.layer.cornerRadius  = 22;
+    self.blurBG.clipsToBounds       = YES;
     [self.view addSubview:self.blurBG];
 
-    // Panel — gris oscuro neutro
+    // ── Panel sobre el blur — casi transparente para dejar pasar el glass
     self.panel = [[UIView alloc] initWithFrame:CGRectZero];
     self.panel.backgroundColor    = PanelBG();
     self.panel.layer.cornerRadius = 22;
-    self.panel.layer.borderWidth  = 0.5;
-    self.panel.layer.borderColor  = [UIColor colorWithWhite:1 alpha:0.12].CGColor;
-    self.panel.clipsToBounds = YES;
+    self.panel.layer.borderWidth  = 0.6;
+    self.panel.layer.borderColor  = [UIColor colorWithWhite:1 alpha:0.13].CGColor;
+    self.panel.clipsToBounds      = YES;
     [self.view addSubview:self.panel];
 
-    // Sidebar
+    // ── Sidebar
     self.sidebar = [[UIView alloc] initWithFrame:CGRectZero];
-    self.sidebar.backgroundColor = [UIColor colorWithWhite:0 alpha:0.10];
+    self.sidebar.backgroundColor = SidebarBG();
     [self.panel addSubview:self.sidebar];
 
-    // Divisor
+    // ── Divisor sidebar/content
     UIView *div = [[UIView alloc] initWithFrame:CGRectZero];
     div.tag = 99;
-    div.backgroundColor = [UIColor colorWithWhite:1 alpha:0.08];
+    div.backgroundColor = [UIColor colorWithWhite:1 alpha:0.07];
     [self.panel addSubview:div];
 
-    // Content area
+    // ── Content area
     self.contentArea = [[UIView alloc] initWithFrame:CGRectZero];
     self.contentArea.backgroundColor = UIColor.clearColor;
     [self.panel addSubview:self.contentArea];
 
-    // Scroll — con padding interno para que no se corten las filas
+    // ── Scroll con padding lateral — filas no se cortan
     self.scroll = [[UIScrollView alloc] initWithFrame:CGRectZero];
     self.scroll.showsVerticalScrollIndicator = NO;
     self.scroll.bounces = YES;
-    self.scroll.clipsToBounds = NO; // las filas no se cortan en el scroll
+    self.scroll.clipsToBounds = YES;
     [self.contentArea addSubview:self.scroll];
 
-    // Pan gestures para drag del panel
+    // ── Pan gestures para arrastrar el panel
     for (UIView *target in @[self.sidebar, self.contentArea]) {
         UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc]
             initWithTarget:self action:@selector(dragPanel:)];
@@ -398,13 +356,14 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL accent)
     CGFloat sh = self.view.bounds.size.height;
     if (sw <= 0) sw = 320; if (sh <= 0) sh = 480;
 
-    // Panel: cubre bien la pantalla sin tocar los bordes
-    CGFloat pw = MIN(440.0, MAX(280.0, sw - 140.0));
-    CGFloat ph = MIN(560.0, MAX(340.0, sh - 60.0));
+    // Panel ocupa bien la pantalla — se ve como en la referencia
+    CGFloat pw = MIN(sw - 120.0, 480.0);
+    pw = MAX(pw, 280.0);
+    CGFloat ph = MIN(sh - 60.0, 560.0);
+    ph = MAX(ph, 340.0);
 
     CGRect f = self.panel.frame;
-    if (f.size.width == 0) {
-        // Primera vez: centrar
+    if (f.size.width < 1) {
         f = CGRectMake((sw - pw) / 2.0, (sh - ph) / 2.0, pw, ph);
     } else {
         f.size = CGSizeMake(pw, ph);
@@ -414,8 +373,7 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL accent)
     self.panel.frame  = f;
     self.blurBG.frame = f;
 
-    // Sidebar: 68pt — botones más grandes
-    const CGFloat sbW = 68.0;
+    const CGFloat sbW = 70.0;
     self.sidebar.frame = CGRectMake(0, 0, sbW, ph);
 
     UIView *div = [self.panel viewWithTag:99];
@@ -425,14 +383,12 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL accent)
     CGFloat caW = pw - caX;
     self.contentArea.frame = CGRectMake(caX, 0, caW, ph);
 
-    // Header: 52pt
-    const CGFloat headerH = 52.0;
-    // Scroll con padding horizontal 10pt para que las filas no toquen el borde
-    const CGFloat scrollPad = 10.0;
-    self.scroll.frame = CGRectMake(scrollPad, headerH,
-                                   caW - scrollPad * 2,
-                                   ph - headerH - 8);
-    self.scroll.clipsToBounds = YES;
+    const CGFloat headerH  = 54.0;
+    const CGFloat padH     = 10.0;  // padding horizontal filas
+    const CGFloat padB     = 10.0;  // padding bottom
+    self.scroll.frame = CGRectMake(padH, headerH,
+                                   caW - padH * 2,
+                                   ph - headerH - padB);
 
     [self layoutSidebarButtons];
     if (fabs(self.builtWidth - self.scroll.bounds.size.width) > 0.5) [self buildPage];
@@ -440,12 +396,12 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL accent)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SIDEBAR
-// Tab 0: ESP          eye.fill
-// Tab 1: Aim          scope
-// Tab 2: Colors       paintpalette.fill
-// Tab 3: Misc         shippingbox.fill
-// Tab 4: Settings     gearshape.fill
+// SIDEBAR — 5 tabs
+// 0: ESP          eye.fill
+// 1: Aim          scope
+// 2: Colors       paintpalette.fill
+// 3: Misc         shippingbox.fill
+// 4: Settings     gearshape.fill
 // ─────────────────────────────────────────────────────────────────────────────
 static NSArray<NSString *> *TabIcons(void) {
     return @[@"eye.fill", @"scope", @"paintpalette.fill",
@@ -461,9 +417,9 @@ static NSArray<NSString *> *TabNames(void) {
     for (NSInteger i = 0; i < 5; i++) {
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
         btn.tag = 300 + i;
-        btn.layer.cornerRadius = 25; // 50×50 → radius 25
-        UIImage *img = SFSym(icons[i], 20, UIImageSymbolWeightSemibold);
-        [btn setImage:img forState:UIControlStateNormal];
+        btn.layer.cornerRadius = 26;  // 52×52 → r26
+        [btn setImage:SFSym(icons[i], 21, UIImageSymbolWeightSemibold)
+             forState:UIControlStateNormal];
         [btn addTarget:self action:@selector(sidebarTap:)
             forControlEvents:UIControlEventTouchUpInside];
         [self.sidebar addSubview:btn];
@@ -473,15 +429,15 @@ static NSArray<NSString *> *TabNames(void) {
 }
 
 - (void)layoutSidebarButtons {
-    const CGFloat btnSz = 50, gap = 12;
+    const CGFloat btnSz = 52, gap = 12;
     CGFloat total = 5 * btnSz + 4 * gap;
     CGFloat sbH = self.sidebar.bounds.size.height;
-    if (sbH < 1) sbH = 380;
+    if (sbH < 1) sbH = 400;
     CGFloat startY = (sbH - total) / 2.0;
     for (NSInteger i = 0; i < 5; i++) {
         UIButton *btn = (UIButton *)[self.sidebar viewWithTag:300 + i];
         if (!btn) continue;
-        btn.frame = CGRectMake((68 - btnSz) / 2.0,
+        btn.frame = CGRectMake((70 - btnSz) / 2.0,
                                startY + i * (btnSz + gap),
                                btnSz, btnSz);
     }
@@ -497,7 +453,7 @@ static NSArray<NSString *> *TabNames(void) {
         btn.tintColor         = sel ? UIColor.blackColor
                                     : [UIColor colorWithWhite:1 alpha:0.55];
         btn.layer.borderWidth = sel ? 0 : 0.5;
-        btn.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.18].CGColor;
+        btn.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.16].CGColor;
     }
 }
 
@@ -518,38 +474,35 @@ static NSArray<NSString *> *TabNames(void) {
         if (v.tag >= 500 && v.tag < 600) [v removeFromSuperview];
 
     CGFloat cw = self.contentArea.bounds.size.width;
-    if (cw < 10) cw = 300;
+    if (cw < 10) cw = 280;
 
-    // Fondo header
-    UIView *hdr = [[UIView alloc] initWithFrame:CGRectMake(10, 8, cw - 20, 38)];
+    // Fondo del header — coincide con la referencia
+    UIView *hdr = [[UIView alloc] initWithFrame:CGRectMake(10, 7, cw - 20, 40)];
     hdr.tag = 500;
-    hdr.backgroundColor    = [UIColor colorWithWhite:1 alpha:0.05];
+    hdr.backgroundColor    = HeaderBG();
     hdr.layer.cornerRadius = 13;
     [self.contentArea addSubview:hdr];
 
-    // Ícono
     UIImageView *iv = [[UIImageView alloc] initWithImage:
         SFSym(TabIcons()[self.page], 14, UIImageSymbolWeightSemibold)];
     iv.tag = 501;
-    iv.tintColor   = LblPrimary();
+    iv.tintColor   = LblMain();
     iv.contentMode = UIViewContentModeScaleAspectFit;
-    iv.frame = CGRectMake(24, 17, 16, 16);
+    iv.frame = CGRectMake(24, 18, 15, 15);
     [self.contentArea addSubview:iv];
 
-    // Título
-    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(46, 10, cw - 110, 32)];
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(46, 10, cw - 110, 34)];
     title.tag       = 502;
     title.text      = TabNames()[self.page];
-    title.textColor = LblPrimary();
+    title.textColor = LblMain();
     title.font      = [UIFont systemFontOfSize:16 weight:UIFontWeightBold];
     [self.contentArea addSubview:title];
 
-    // Botón cerrar
     UIButton *close = [UIButton buttonWithType:UIButtonTypeSystem];
     close.tag   = 503;
-    close.frame = CGRectMake(cw - 42, 10, 30, 32);
+    close.frame = CGRectMake(cw - 42, 10, 30, 34);
     [close setImage:SFSym(@"xmark", 12, UIImageSymbolWeightBold) forState:UIControlStateNormal];
-    close.tintColor = [UIColor colorWithWhite:1 alpha:0.40];
+    close.tintColor = [UIColor colorWithWhite:1 alpha:0.38];
     [close addTarget:self action:@selector(closeMenu)
         forControlEvents:UIControlEventTouchUpInside];
     [self.contentArea addSubview:close];
@@ -563,12 +516,13 @@ static NSArray<NSString *> *TabNames(void) {
     return (w > 10) ? w : 260;
 }
 
+// Toggle — label monolingüe (idioma activo)
 - (CGFloat)addToggleEN:(NSString *)en ES:(NSString *)es VI:(NSString *)vi
                    key:(NSString *)key fallback:(BOOL)fb y:(CGFloat)y {
     CGFloat w = [self contentWidth];
-    DAAERow *row = [[DAAERow alloc] initWithEN:en ES:es VI:vi
-                                            on:ESPPrefsBool(key, fb) width:w];
-    row.frame = CGRectMake(0, y, w, row.bounds.size.height);
+    NSString *txt = DAAEStr(en, es, vi);
+    DAAERow *row = [[DAAERow alloc] initWithLabel:txt on:ESPPrefsBool(key, fb) width:w];
+    row.frame = CGRectMake(0, y, w, 60);
     objc_setAssociatedObject(row, "espKey", key, OBJC_ASSOCIATION_COPY_NONATOMIC);
     __weak DAAERow *wrow = row;
     __weak _0xDEADBEEE *wself = self;
@@ -580,28 +534,30 @@ static NSArray<NSString *> *TabNames(void) {
     };
     [self.controls addObject:row];
     [self.scroll addSubview:row];
-    return y + row.bounds.size.height + 8;
+    return y + 68;
 }
 
+// Sección
 - (CGFloat)addSection:(NSString *)title y:(CGFloat)y {
-    UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(4, y + 6, [self contentWidth] - 8, 20)];
+    UILabel *l = [[UILabel alloc] initWithFrame:
+        CGRectMake(4, y + 4, [self contentWidth] - 8, 20)];
     l.text      = title;
     l.textColor = SectionClr();
     l.font      = [UIFont systemFontOfSize:11 weight:UIFontWeightBold];
     [self.scroll addSubview:l];
-    return y + 32;
+    return y + 30;
 }
 
+// Slider monolingüe
 - (CGFloat)addSliderEN:(NSString *)en ES:(NSString *)es VI:(NSString *)vi
                    key:(NSString *)key min:(float)mn max:(float)mx fallback:(float)fb y:(CGFloat)y {
-    CGFloat w = [self contentWidth];
-    DAAESlider *sl = [[DAAESlider alloc] initWithEN:en ES:es VI:vi
-                                                key:key min:mn max:mx fallback:fb width:w];
-    CGFloat h = sl.bounds.size.height;
-    sl.frame = CGRectMake(0, y, w, h);
+    CGFloat w   = [self contentWidth];
+    NSString *t = DAAEStr(en, es, vi);
+    DAAESlider *sl = [[DAAESlider alloc] initWithLabel:t key:key min:mn max:mx fallback:fb width:w];
+    sl.frame = CGRectMake(0, y, w, 72);
     [self.controls addObject:(UIControl *)sl];
     [self.scroll addSubview:sl];
-    return y + h + 8;
+    return y + 80;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -609,7 +565,7 @@ static NSArray<NSString *> *TabNames(void) {
 // ─────────────────────────────────────────────────────────────────────────────
 - (void)rebuildAnimated {
     if (UIAccessibilityIsReduceMotionEnabled()) { [self buildPage]; return; }
-    [UIView transitionWithView:self.scroll duration:0.18
+    [UIView transitionWithView:self.scroll duration:0.15
         options:UIViewAnimationOptionTransitionCrossDissolve|UIViewAnimationOptionAllowUserInteraction
         animations:^{ [self buildPage]; } completion:nil];
 }
@@ -623,47 +579,49 @@ static NSArray<NSString *> *TabNames(void) {
     [self.controls removeAllObjects];
     self.spinStatusLabel = nil;
     self.builtWidth = [self contentWidth];
-
     [self buildHeader];
     CGFloat y = 6;
 
-    // ─── TAB 0: ESP ──────────────────────────────────────────────────────────
+    // ── TAB 0: ESP ────────────────────────────────────────────────────────────
     if (self.page == 0) {
-        y = [self addToggleEN:@"ESP Master"  ES:@"Maestro ESP"    VI:@"Chế độ ESP"    key:@"ESPEnabled"  fallback:YES y:y];
+        y = [self addToggleEN:@"ESP Master"  ES:@"Maestro ESP"   VI:@"Chế độ ESP"   key:@"ESPEnabled" fallback:YES y:y];
         y = [self addSection:@"— DRAW —" y:y];
-        y = [self addToggleEN:@"Box ESP"     ES:@"Caja ESP"       VI:@"Hộp ESP"       key:@"Box"         fallback:YES y:y];
-        y = [self addToggleEN:@"Line ESP"    ES:@"Ejes XYZ"       VI:@"Đường thẳng"  key:@"Line"        fallback:NO  y:y];
-        y = [self addToggleEN:@"Skeleton"    ES:@"Esqueleto"      VI:@"Xương"         key:@"Skeleton"    fallback:NO  y:y];
-        y = [self addToggleEN:@"Head Dot"    ES:@"Punto cabeza"   VI:@"Chấm đầu"      key:@"HeadRedDot"  fallback:NO  y:y];
-        y = [self addToggleEN:@"Health Bar"  ES:@"Barra de vida"  VI:@"Thanh máu"    key:@"Health"      fallback:YES y:y];
-        y = [self addToggleEN:@"Name"        ES:@"Nombre"         VI:@"Tên"           key:@"Name"        fallback:YES y:y];
-        y = [self addToggleEN:@"Distance"    ES:@"Distancia"      VI:@"Khoảng cách"  key:@"Dis"         fallback:YES y:y];
-        y = [self addToggleEN:@"Clean ESP"   ES:@"ESP limpio"     VI:@"ESP sạch"      key:@"CleanESP"    fallback:YES y:y];
+        y = [self addToggleEN:@"Box ESP"     ES:@"Caja ESP"      VI:@"Hộp ESP"      key:@"Box"        fallback:YES y:y];
+        y = [self addToggleEN:@"Line ESP"    ES:@"Ejes XYZ"      VI:@"Đường thẳng" key:@"Line"       fallback:NO  y:y];
+        y = [self addToggleEN:@"Skeleton"    ES:@"Esqueleto"     VI:@"Xương"        key:@"Skeleton"   fallback:NO  y:y];
+        y = [self addToggleEN:@"Head Dot"    ES:@"Punto cabeza"  VI:@"Chấm đầu"     key:@"HeadRedDot" fallback:NO  y:y];
+        y = [self addToggleEN:@"Health Bar"  ES:@"Barra de vida" VI:@"Thanh máu"   key:@"Health"     fallback:YES y:y];
+        y = [self addToggleEN:@"Name"        ES:@"Nombre"        VI:@"Tên"          key:@"Name"       fallback:YES y:y];
+        y = [self addToggleEN:@"Distance"    ES:@"Distancia"     VI:@"Khoảng cách" key:@"Dis"        fallback:YES y:y];
+        y = [self addToggleEN:@"Clean ESP"   ES:@"ESP limpio"    VI:@"ESP sạch"     key:@"CleanESP"   fallback:YES y:y];
         y = [self addSection:@"— FOV —" y:y];
-        y = [self addToggleEN:@"Show FOV"    ES:@"Mostrar FOV"    VI:@"Hiện FOV"      key:@"ShowFov"     fallback:YES y:y];
-        y = [self addSliderEN:@"FOV Size"    ES:@"Tamaño FOV"     VI:@"Cỡ FOV"
+        y = [self addToggleEN:@"Show FOV"    ES:@"Mostrar FOV"   VI:@"Hiện FOV"     key:@"ShowFov"    fallback:YES y:y];
+        y = [self addSliderEN:@"FOV Size"    ES:@"Tamaño FOV"    VI:@"Cỡ FOV"
                           key:@"FovSize" min:5 max:48 fallback:40 y:y];
 
-    // ─── TAB 1: AIM ──────────────────────────────────────────────────────────
+    // ── TAB 1: AIM ────────────────────────────────────────────────────────────
     } else if (self.page == 1) {
         y = [self addSection:@"— AIM TYPE —" y:y];
 
+        // Lee el raw float — no usa AimModePolicy::ReadType para evitar que
+        // valores como -1 sean normalizados a 0 por la política interna
+        float aimRaw = AimRaw();   // -1 = sin aim, 0/1/2 = tipo
+        NSInteger aimIdx = AimIdx();
+
         NSArray *aimEN = @[@"Aim Head",   @"Aim Neck",          @"Silent Aim"];
-        NSArray *aimES = @[@"Apuntar cabeza", @"Apuntar cuello",@"Apuntado silencioso"];
+        NSArray *aimES = @[@"Apuntar cabeza",@"Apuntar cuello", @"Apuntado silencioso"];
         NSArray *aimVI = @[@"Bắn đầu",   @"Bắn cổ",           @"Bắn im lặng"];
-        const NSInteger curType = static_cast<int>(
-            AimModePolicy::ReadType(ESPPrefsFloat(@"AimType", 0)));
-        const BOOL hasValidType = (curType >= 0 && curType <= 2);
 
         NSMutableArray<DAAERow *> *aimRows = [NSMutableArray array];
         for (NSInteger i = 0; i < 3; i++) {
             CGFloat w = [self contentWidth];
-            DAAERow *row = [[DAAERow alloc] initWithEN:aimEN[i] ES:aimES[i] VI:aimVI[i]
-                                                    on:(hasValidType && curType == i) width:w];
-            row.frame = CGRectMake(0, y, w, row.bounds.size.height);
+            NSString *txt = DAAEStr(aimEN[i], aimES[i], aimVI[i]);
+            DAAERow *row = [[DAAERow alloc] initWithLabel:txt
+                                                       on:(aimIdx == i) width:w];
+            row.frame = CGRectMake(0, y, w, 60);
             [aimRows addObject:row];
             [self.scroll addSubview:row];
-            y += row.bounds.size.height + 8;
+            y += 68;
         }
         for (NSInteger i = 0; i < 3; i++) {
             NSInteger idx = i;
@@ -671,44 +629,50 @@ static NSArray<NSString *> *TabNames(void) {
             aimRows[i].onChanged = ^(BOOL on) {
                 NSMutableArray<DAAERow *> *rows = wRows;
                 if (on) {
+                    // Activa este, desactiva los demás
                     for (NSInteger j = 0; j < (NSInteger)rows.count; j++) {
                         if (j != idx) {
                             rows[j].toggleOn = NO;
                             [rows[j].check setOn:NO animated:YES];
-                            [UIView animateWithDuration:0.18
-                                            animations:^{ [rows[j] _applyStyle:NO]; }];
+                            [UIView animateWithDuration:0.15
+                                animations:^{ [rows[j] _applyStyle:NO]; }];
                         }
                     }
                     ESPPrefsSetFloat(@"AimType", (float)idx);
                     ESPPrefsSetFloat(@"AimActivation", static_cast<int>(
-                        AimModePolicy::AfterTypeSelection(AimModePolicy::ReadType((float)idx))));
+                        AimModePolicy::AfterTypeSelection(
+                            AimModePolicy::ReadType((float)idx))));
                     ESPPrefsSetBool(@"SilentAim", NO);
                 } else {
+                    // Desactiva — todos quedan OFF, guarda -1 explícitamente
                     ESPPrefsSetFloat(@"AimType", -1);
                 }
-                ESPClearAimLock(); ESPSyncFromPrefs();
+                ESPClearAimLock();
+                ESPSyncFromPrefs();
             };
         }
 
-        // Activation — visible si hay aim activo y no es Silent
-        const BOOL isSilent = (AimModePolicy::ReadType(ESPPrefsFloat(@"AimType",0))
-                               == AimModePolicy::Type::Silent);
-        if (hasValidType && !isSilent) {
+        // Activation — solo visible si hay aim activo y no es Silent
+        BOOL isSilent = (aimRaw >= 0 &&
+                         AimModePolicy::ReadType(aimRaw) == AimModePolicy::Type::Silent);
+        if (AimActive() && !isSilent) {
             y = [self addSection:@"— ACTIVATION —" y:y];
-            NSArray *actEN = @[@"On Shoot",   @"On Scope",    @"Always",     @"Fire+Scope"];
-            NSArray *actES = @[@"Al disparar",@"Al apuntar",  @"Siempre",    @"Disparar+Scope"];
-            NSArray *actVI = @[@"Khi bắn",    @"Khi ngắm",  @"Luôn luôn", @"Bắn+Ngắm"];
+            NSArray *actEN = @[@"On Shoot",    @"On Scope",   @"Always",      @"Fire+Scope"];
+            NSArray *actES = @[@"Al disparar", @"Al apuntar", @"Siempre",     @"Disparar+Scope"];
+            NSArray *actVI = @[@"Khi bắn",     @"Khi ngắm",  @"Luôn luôn",  @"Bắn+Ngắm"];
             const NSInteger curAct = static_cast<int>(
-                AimModePolicy::ReadActivation(ESPPrefsFloat(@"AimActivation",0)));
+                AimModePolicy::ReadActivation(ESPPrefsFloat(@"AimActivation", 0)));
+
             NSMutableArray<DAAERow *> *actRows = [NSMutableArray array];
             for (NSInteger i = 0; i < 4; i++) {
                 CGFloat w = [self contentWidth];
-                DAAERow *row = [[DAAERow alloc] initWithEN:actEN[i] ES:actES[i] VI:actVI[i]
-                                                        on:(curAct == i + 1) width:w];
-                row.frame = CGRectMake(0, y, w, row.bounds.size.height);
+                NSString *txt = DAAEStr(actEN[i], actES[i], actVI[i]);
+                DAAERow *row = [[DAAERow alloc] initWithLabel:txt
+                                                           on:(curAct == i + 1) width:w];
+                row.frame = CGRectMake(0, y, w, 60);
                 [actRows addObject:row];
                 [self.scroll addSubview:row];
-                y += row.bounds.size.height + 8;
+                y += 68;
             }
             for (NSInteger i = 0; i < 4; i++) {
                 NSInteger choice = i + 1;
@@ -720,15 +684,16 @@ static NSArray<NSString *> *TabNames(void) {
                             if (j != (choice - 1)) {
                                 rows[j].toggleOn = NO;
                                 [rows[j].check setOn:NO animated:YES];
-                                [UIView animateWithDuration:0.18
-                                                animations:^{ [rows[j] _applyStyle:NO]; }];
+                                [UIView animateWithDuration:0.15
+                                    animations:^{ [rows[j] _applyStyle:NO]; }];
                             }
                         }
                         ESPPrefsSetFloat(@"AimActivation", (float)choice);
                     } else {
                         ESPPrefsSetFloat(@"AimActivation", 0);
                     }
-                    ESPClearAimLock(); ESPSyncFromPrefs();
+                    ESPClearAimLock();
+                    ESPSyncFromPrefs();
                 };
             }
         }
@@ -739,58 +704,56 @@ static NSArray<NSString *> *TabNames(void) {
         y = [self addSliderEN:@"FOV"         ES:@"FOV"             VI:@"FOV"
                           key:@"FovSize" min:5 max:48 fallback:40 y:y];
         y = [self addSection:@"— WEAPONS —" y:y];
-        y = [self addToggleEN:@"Fast Fire"   ES:@"Disparo rápido" VI:@"Bắn nhanh"        key:@"FastFire"         fallback:NO  y:y];
-        y = [self addToggleEN:@"No Reload"   ES:@"Sin recarga"    VI:@"Không nạp đạn"   key:@"ShootNoReload"    fallback:NO  y:y];
+        y = [self addToggleEN:@"Fast Fire"   ES:@"Disparo rápido"  VI:@"Bắn nhanh"        key:@"FastFire"         fallback:NO  y:y];
+        y = [self addToggleEN:@"No Reload"   ES:@"Sin recarga"     VI:@"Không nạp đạn"   key:@"ShootNoReload"    fallback:NO  y:y];
 
-    // ─── TAB 2: COLORS ───────────────────────────────────────────────────────
+    // ── TAB 2: COLORS ─────────────────────────────────────────────────────────
     } else if (self.page == 2) {
         CGFloat w = [self contentWidth];
-        UISegmentedControl *target = [[UISegmentedControl alloc] initWithItems:@[@"Box", @"FOV"]];
-        target.frame = CGRectMake(0, y, w, 36);
-        target.selectedSegmentIndex = self.colorTarget;
-        target.selectedSegmentTintColor = [UIColor colorWithWhite:1 alpha:0.22];
-        [target setTitleTextAttributes:@{NSForegroundColorAttributeName:LblPrimary(),
+        UISegmentedControl *seg = [[UISegmentedControl alloc] initWithItems:@[@"Box", @"FOV"]];
+        seg.frame = CGRectMake(0, y, w, 36);
+        seg.selectedSegmentIndex = self.colorTarget;
+        seg.selectedSegmentTintColor = [UIColor colorWithWhite:1 alpha:0.22];
+        [seg setTitleTextAttributes:@{NSForegroundColorAttributeName:LblMain(),
             NSFontAttributeName:[UIFont systemFontOfSize:13 weight:UIFontWeightSemibold]}
-                               forState:UIControlStateNormal];
-        [target setTitleTextAttributes:@{NSForegroundColorAttributeName:LblPrimary()}
-                               forState:UIControlStateSelected];
-        [target addTarget:self action:@selector(colorTargetChanged:)
+                            forState:UIControlStateNormal];
+        [seg setTitleTextAttributes:@{NSForegroundColorAttributeName:LblMain()}
+                            forState:UIControlStateSelected];
+        [seg addTarget:self action:@selector(colorTargetChanged:)
              forControlEvents:UIControlEventValueChanged];
-        [self.scroll addSubview:target];
-        [self.controls addObject:(UIControl *)target];
-        y += 44;
+        [self.scroll addSubview:seg];
+        [self.controls addObject:(UIControl *)seg];
+        y += 46;
 
         NSString *pfx = (self.colorTarget == 0) ? @"BoxColor" : @"FovColor";
         float r = ESPPrefsFloat([pfx stringByAppendingString:@"R"], 0.46);
         float g = ESPPrefsFloat([pfx stringByAppendingString:@"G"], 0.86);
         float b = ESPPrefsFloat([pfx stringByAppendingString:@"B"], 0.73);
-        UIColor *swCol = [UIColor colorWithRed:r green:g blue:b alpha:1.0];
 
         UILabel *swatch = [[UILabel alloc] initWithFrame:CGRectMake(0, y, w, 50)];
         swatch.text = [NSString stringWithFormat:@"#%02X%02X%02X",
-            (int)round(r*255), (int)round(g*255), (int)round(b*255)];
+            (int)round(r*255),(int)round(g*255),(int)round(b*255)];
         swatch.textAlignment   = NSTextAlignmentCenter;
-        swatch.backgroundColor = swCol;
+        swatch.backgroundColor = [UIColor colorWithRed:r green:g blue:b alpha:1.0];
         CGFloat lum = r*0.299 + g*0.587 + b*0.114;
         swatch.textColor   = lum > 0.6 ? UIColor.blackColor : UIColor.whiteColor;
         swatch.font = [UIFont systemFontOfSize:14 weight:UIFontWeightBold];
-        swatch.layer.cornerRadius = 16;
+        swatch.layer.cornerRadius = 14;
         swatch.clipsToBounds = YES;
         [self.scroll addSubview:swatch];
         y += 58;
 
-        NSArray *rgbEN  = @[@"Red",   @"Green",   @"Blue"];
-        NSArray *rgbES  = @[@"Rojo",  @"Verde",   @"Azul"];
-        NSArray *rgbVI  = @[@"Đỏ",    @"Xanh lá", @"Xanh dương"];
-        NSArray *rgbSuf = @[@"R",     @"G",       @"B"];
-        float    rgbDef[3] = {0.46f,  0.86f,      0.73f};
-        for (int i = 0; i < 3; i++) {
-            NSString *key = [pfx stringByAppendingString:rgbSuf[i]];
+        NSArray *rgbEN  = @[@"Red",  @"Green",   @"Blue"];
+        NSArray *rgbES  = @[@"Rojo", @"Verde",   @"Azul"];
+        NSArray *rgbVI  = @[@"Đỏ",   @"Xanh lá", @"Xanh dương"];
+        NSArray *suf    = @[@"R",    @"G",       @"B"];
+        float    def[3] = {0.46f,   0.86f,       0.73f};
+        for (int i = 0; i < 3; i++)
             y = [self addSliderEN:rgbEN[i] ES:rgbES[i] VI:rgbVI[i]
-                              key:key min:0 max:1 fallback:rgbDef[i] y:y];
-        }
+                              key:[pfx stringByAppendingString:suf[i]]
+                              min:0 max:1 fallback:def[i] y:y];
 
-    // ─── TAB 3: MISC — incluye Extras + Movement + efectos (Visual Spin, etc.) ──
+    // ── TAB 3: MISC ───────────────────────────────────────────────────────────
     } else if (self.page == 3) {
         y = [self addSection:@"— EXTRAS —" y:y];
         y = [self addToggleEN:@"Ghost"        ES:@"Fantasma"         VI:@"Bóng ma"            key:@"GhostModeFloating"  fallback:NO y:y];
@@ -823,77 +786,77 @@ static NSArray<NSString *> *TabNames(void) {
             [self updateSpinStatus];
             y += 40;
         }
-        y = [self addToggleEN:@"Hide Capture"    ES:@"Ocultar capturas"  VI:@"Ẩn chụp màn hình"
+        y = [self addToggleEN:@"Hide Capture"    ES:@"Ocultar capturas"   VI:@"Ẩn chụp màn hình"
                           key:@"AnLive" fallback:NO y:y];
         y = [self addToggleEN:@"Balanced Render" ES:@"Render equilibrado" VI:@"Render cân bằng"
                           key:@"BalancedRender" fallback:NO y:y];
 
-    // ─── TAB 4: SETTINGS ─────────────────────────────────────────────────────
+    // ── TAB 4: SETTINGS ───────────────────────────────────────────────────────
     } else {
         CGFloat w = [self contentWidth];
 
-        // Idioma
+        // Selector de idioma — 3 botones, solo el activo resaltado
         y = [self addSection:@"— LANGUAGE —" y:y];
         UIView *langRow = [[UIView alloc] initWithFrame:CGRectMake(0, y, w, 52)];
         langRow.backgroundColor    = RowOFF();
-        langRow.layer.cornerRadius = 16;
-        NSArray *codes = @[@"EN", @"ES", @"VI"];
+        langRow.layer.cornerRadius = 14;
+        NSArray *codes     = @[@"EN", @"ES", @"VI"];
         NSArray *fullNames = @[@"English", @"Español", @"Tiếng Việt"];
+        NSInteger curLang  = DAAELang();
         CGFloat lbtnW = (w - 32 - 12) / 3.0;
-        NSInteger curLang = DAAELang();
         for (NSInteger k = 0; k < 3; k++) {
             UIButton *lb = [UIButton buttonWithType:UIButtonTypeCustom];
             lb.frame = CGRectMake(16 + k * (lbtnW + 6), 10, lbtnW, 32);
             lb.backgroundColor    = (k == curLang) ? UIColor.whiteColor
-                                                    : [UIColor colorWithWhite:1 alpha:0.10];
+                                                    : [UIColor colorWithWhite:1 alpha:0.08];
             lb.layer.cornerRadius = 10;
             [lb setTitle:codes[k] forState:UIControlStateNormal];
             lb.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightBold];
-            [lb setTitleColor:(k == curLang) ? UIColor.blackColor : LblPrimary()
+            [lb setTitleColor:(k == curLang) ? UIColor.blackColor : LblMain()
                      forState:UIControlStateNormal];
             objc_setAssociatedObject(lb, "langIdx", @(k), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-            [lb addTarget:self action:@selector(langTap:) forControlEvents:UIControlEventTouchUpInside];
+            [lb addTarget:self action:@selector(langTap:)
+                forControlEvents:UIControlEventTouchUpInside];
             [langRow addSubview:lb];
         }
         [self.scroll addSubview:langRow];
         y += 60;
 
-        // Mostrar nombre del idioma seleccionado
-        UILabel *langHint = [[UILabel alloc] initWithFrame:CGRectMake(4, y, w - 8, 18)];
-        langHint.text = fullNames[curLang];
-        langHint.textColor = SectionClr();
-        langHint.font = [UIFont systemFontOfSize:11];
-        langHint.textAlignment = NSTextAlignmentCenter;
-        [self.scroll addSubview:langHint];
+        // Nombre del idioma activo debajo
+        UILabel *lhint = [[UILabel alloc] initWithFrame:CGRectMake(0, y, w, 18)];
+        lhint.text          = fullNames[curLang];
+        lhint.textColor     = SectionClr();
+        lhint.font          = [UIFont systemFontOfSize:11];
+        lhint.textAlignment = NSTextAlignmentCenter;
+        [self.scroll addSubview:lhint];
         y += 26;
 
         // Info
         y = [self addSection:@"— INFO —" y:y];
-
-        struct { NSString *title; NSString *value; } infoRows[] = {
-            { @"Product",  @"DAAE IOS"        },
-            { @"Creator",  @"@didierxit7"      },
-            { @"Telegram", @"t.me/didierxit7"  },
-            { @"Key",      @"TEST"             },
+        typedef struct { NSString *t; NSString *v; BOOL dim; } InfoEntry;
+        InfoEntry entries[4] = {
+            {@"Product",   @"DAAE IOS",         NO},
+            {@"Creator",   @"@didierxit7",       NO},
+            {@"Telegram",  @"t.me/didierxit7",   NO},
+            {@"Key",       @"TEST",              YES},
         };
         for (int i = 0; i < 4; i++) {
-            BOOL isKey = (i == 3);
-            UIView *row = InfoRow(infoRows[i].title, infoRows[i].value, w, isKey);
+            UIView *row = InfoRow(entries[i].t, entries[i].v, w, entries[i].dim);
             row.frame = CGRectMake(0, y, w, 52);
             [self.scroll addSubview:row];
-            y += 58;
+            y += 60;
         }
     }
 
     // Pie
     UILabel *credit = [[UILabel alloc] initWithFrame:
-        CGRectMake(0, y + 10, [self contentWidth], 16)];
+        CGRectMake(0, y + 8, [self contentWidth], 16)];
     credit.text          = @"DAAE IOS";
-    credit.textColor     = [UIColor colorWithWhite:1 alpha:0.14];
+    credit.textColor     = [UIColor colorWithWhite:1 alpha:0.13];
     credit.font          = [UIFont systemFontOfSize:10 weight:UIFontWeightMedium];
     credit.textAlignment = NSTextAlignmentCenter;
     [self.scroll addSubview:credit];
-    y += 32;
+    y += 30;
 
     self.scroll.contentSize = CGSizeMake([self contentWidth], y + 6);
     self.scroll.contentOffset = CGPointMake(0, MAX(0,
@@ -972,7 +935,7 @@ static NSArray<NSString *> *TabNames(void) {
     if (pan.state == UIGestureRecognizerStateBegan)
         self.panelOrigin = self.panel.frame.origin;
     CGPoint d = [pan translationInView:self.view];
-    CGRect f  = self.panel.frame;
+    CGRect  f = self.panel.frame;
     f.origin  = CGPointMake(self.panelOrigin.x + d.x, self.panelOrigin.y + d.y);
     self.panel.frame  = f;
     self.blurBG.frame = f;
@@ -986,28 +949,28 @@ static NSArray<NSString *> *TabNames(void) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _0xF010 — touch routing preservado
+// _0xF010 — touch routing
 // ─────────────────────────────────────────────────────────────────────────────
 - (BOOL)_0xF010:(CGPoint)point phase:(NSInteger)phase pointerId:(NSInteger)pointerId {
     if (phase == UITouchPhaseBegan) {
         if (!CGRectContainsPoint(self.panel.frame, point)) return NO;
         if (self.pointer != -1) return YES;
-        self.pointer = pointerId; self.began = point;
+        self.pointer      = pointerId;
+        self.began        = point;
         self.panelOrigin  = self.panel.frame.origin;
         self.scrollOrigin = self.scroll.contentOffset.y;
-        self.scrolling = NO; self.activeControl = nil;
+        self.scrolling    = NO;
+        self.activeControl = nil;
         CGPoint local = [self.panel convertPoint:point fromView:self.view];
-        // Sidebar (x < 70) o header (y < 54, fuera del botón cerrar) → drag
-        self.dragging = (local.x < 70) ||
-                        (local.y < 54 && local.x < self.panel.bounds.size.width - 44);
+        self.dragging = (local.x < 72) ||
+                        (local.y < 56 && local.x < self.panel.bounds.size.width - 44);
         if (self.dragging) return YES;
-        // Hit controls
-        CGPoint scrollLocal = [self.scroll convertPoint:point fromView:self.view];
+        CGPoint sc = [self.scroll convertPoint:point fromView:self.view];
         for (UIView *c in self.controls) {
             if (![c isKindOfClass:UIControl.class]) continue;
             UIControl *ctrl = (UIControl *)c;
             if (!ctrl.enabled) continue;
-            if (CGRectContainsPoint([ctrl convertRect:ctrl.bounds toView:self.scroll], scrollLocal))
+            if (CGRectContainsPoint([ctrl convertRect:ctrl.bounds toView:self.scroll], sc))
             { self.activeControl = ctrl; break; }
         }
         return YES;
