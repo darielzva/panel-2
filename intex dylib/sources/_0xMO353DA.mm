@@ -897,9 +897,9 @@ static NSString *TabName(NSInteger i) {
         y += 58;
 
         y = [self addSection:DAAEStr(@"— ƯU TIÊN MỤC TIÊU —",@"— PRIORIDAD —",@"— ƯU TIÊN —") y:y];
-        y = [self addSliderEN:@"Bán Kính FOV" ES:@"Bán Kính FOV" VI:@"Bán Kính FOV"
+        y = [self addSliderEN:@"Bán Kính FOV" ES:@"Tamaño de FOV" VI:@"Bán Kính FOV"
                           key:@"FovSize" min:5 max:48 fallback:40 y:y];
-        y = [self addSliderEN:@"Độ Dày FOV"   ES:@"Độ Dày FOV"   VI:@"Độ Dày FOV"
+        y = [self addSliderEN:@"Độ Dày FOV"   ES:@"Tamaño de Silent FOV"   VI:@"Độ Dày FOV"
                           key:@"SilentFovSize" min:0 max:10 fallback:0 y:y];
         y = [self addSection:DAAEStr(@"— VŨ KHÍ —",@"— ARMAS —",@"— VŨ KHÍ —") y:y];
         y = [self addToggleEN:@"Fast Fire"   ES:@"Disparo Rápido" VI:@"Bắn Nhanh"  key:@"FastFire"      fallback:NO y:y];
