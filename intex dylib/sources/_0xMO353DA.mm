@@ -54,35 +54,36 @@ static void DAAESetDark(BOOL dark) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COLOR DE ACENTO — 0=Celeste 1=Naranja 2=Rojo 3=Amarillo 4=Verde
-// En modo claro el "acento UI" es negro; en oscuro es blanco.
+//                   5=Negro(modo claro) / Blanco(modo oscuro) — dinámico
 // ─────────────────────────────────────────────────────────────────────────────
 static NSInteger DAAEAccentIdx(void) {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
     if (![ud objectForKey:@"DAAE.accentIdx"]) return 0;
     NSInteger v = [ud integerForKey:@"DAAE.accentIdx"];
-    return (v >= 0 && v <= 4) ? v : 0;
+    return (v >= 0 && v <= 5) ? v : 0;
 }
 static void DAAESetAccentIdx(NSInteger idx) {
     [[NSUserDefaults standardUserDefaults] setInteger:idx forKey:@"DAAE.accentIdx"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
-// Color de acento real (para sliders, checkmarks, picker activo)
+// Color de acento real (para sliders, checkmarks, picker activo, sidebar, header)
 static UIColor *DAAEAccentColor(void) {
     switch (DAAEAccentIdx()) {
         case 1: return [UIColor colorWithRed:1.00 green:0.60 blue:0.10 alpha:1];  // Naranja
         case 2: return [UIColor colorWithRed:0.95 green:0.22 blue:0.22 alpha:1];  // Rojo
         case 3: return [UIColor colorWithRed:0.95 green:0.82 blue:0.14 alpha:1];  // Amarillo
         case 4: return [UIColor colorWithRed:0.24 green:0.82 blue:0.50 alpha:1];  // Verde
+        case 5: return DAAEDark() ? UIColor.whiteColor : UIColor.blackColor;      // Auto
         default: return [UIColor colorWithRed:0.26 green:0.78 blue:0.90 alpha:1]; // Celeste
     }
 }
-// Acento de UI (sidebar tab activo, check fill): negro claro, blanco oscuro
-static UIColor *DAAEUIAccent(void) {
-    return DAAEDark() ? UIColor.whiteColor : UIColor.blackColor;
-}
-// Texto sobre DAAEUIAccent (íconos sidebar activo)
-static UIColor *DAAEUIAccentFG(void) {
-    return DAAEDark() ? UIColor.blackColor : UIColor.whiteColor;
+// Texto sobre DAAEAccentColor como fondo (íconos sidebar activo, pill activo)
+static UIColor *DAAEAccentFG(void) {
+    NSInteger idx = DAAEAccentIdx();
+    if (idx == 5) return DAAEDark() ? UIColor.blackColor : UIColor.whiteColor;
+    // Para amarillo el texto negro queda mejor
+    if (idx == 3) return [UIColor colorWithWhite:0 alpha:0.85];
+    return UIColor.whiteColor;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -657,16 +658,15 @@ static NSString *TabName(NSInteger i) {
 }
 
 - (void)refreshSidebarSelection {
-    UIColor *uiAccent = DAAEUIAccent();
-    UIColor *uiAccentFG = DAAEUIAccentFG();
+    UIColor *accent   = DAAEAccentColor();
+    UIColor *accentFG = DAAEAccentFG();
     for (NSInteger i = 0; i < 5; i++) {
         UIButton *btn = (UIButton *)[self.sidebar viewWithTag:300 + i];
         if (!btn) continue;
         BOOL sel = (i == self.page);
-        btn.backgroundColor = sel ? uiAccent
+        btn.backgroundColor = sel ? accent
                                   : [UIColor colorWithWhite:DAAEDark()?1:0 alpha:0.06];
-        btn.tintColor       = sel ? uiAccentFG
-                                  : LblDim();
+        btn.tintColor       = sel ? accentFG : LblDim();
         btn.layer.borderWidth = sel ? 0 : 0.5;
         btn.layer.borderColor = (DAAEDark()
             ? [UIColor colorWithWhite:1 alpha:0.14]
@@ -674,7 +674,7 @@ static NSString *TabName(NSInteger i) {
 
         UILabel *lbl = (UILabel *)[btn viewWithTag:400 + i];
         if (lbl) {
-            lbl.textColor = sel ? uiAccentFG : LblDim();
+            lbl.textColor = sel ? accentFG : LblDim();
             lbl.text = TabName(i);
         }
     }
@@ -708,15 +708,15 @@ static NSString *TabName(NSInteger i) {
     UIImageView *iv = [[UIImageView alloc] initWithImage:
         SFSym(TabIcons()[(NSUInteger)self.page], 14, UIImageSymbolWeightSemibold)];
     iv.tag = 501;
-    iv.tintColor   = LblMain();
+    iv.tintColor   = DAAEAccentColor();
     iv.contentMode = UIViewContentModeScaleAspectFit;
     iv.frame = CGRectMake(24, 18, 15, 15);
     [self.contentArea addSubview:iv];
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(46, 10, cw - 110, 34)];
     title.tag       = 502;
-    title.text      = TabNamesEN()[(NSUInteger)self.page];
-    title.textColor = LblMain();
+    title.text      = TabName(self.page);
+    title.textColor = DAAEAccentColor();
     title.font      = [UIFont systemFontOfSize:16 weight:UIFontWeightBold];
     [self.contentArea addSubview:title];
 
