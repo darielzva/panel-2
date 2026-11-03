@@ -54,8 +54,33 @@ static void DAAESetDark(BOOL dark) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COLOR DE ACENTO — 0=Celeste 1=Naranja 2=Rojo 3=Amarillo 4=Verde
-//                   5=Negro(modo claro) / Blanco(modo oscuro) — dinámico
+//                   5=Negro(modo claro) / Blanco(modo oscuro) — automático según tema
 // ─────────────────────────────────────────────────────────────────────────────
+// TAMAÑO DEL MENÚ — 0=Pequeño 1=Mediano(default) 2=Grande
+static NSInteger DAAEMenuSize(void) {
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    if (![ud objectForKey:@"DAAE.menuSize"]) return 1;
+    NSInteger v = [ud integerForKey:@"DAAE.menuSize"];
+    return (v >= 0 && v <= 2) ? v : 1;
+}
+static void DAAESetMenuSize(NSInteger s) {
+    [[NSUserDefaults standardUserDefaults] setInteger:s forKey:@"DAAE.menuSize"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+// ESQUINAS — 0=Redondeadas(default) 1=Cuadradas
+static NSInteger DAAECornerStyle(void) {
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    if (![ud objectForKey:@"DAAE.cornerStyle"]) return 0;
+    NSInteger v = [ud integerForKey:@"DAAE.cornerStyle"];
+    return (v >= 0 && v <= 1) ? v : 0;
+}
+static void DAAESetCornerStyle(NSInteger s) {
+    [[NSUserDefaults standardUserDefaults] setInteger:s forKey:@"DAAE.cornerStyle"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+static CGFloat DAAECornerRadius(CGFloat full) {
+    return (DAAECornerStyle() == 1) ? 4.0 : full;
+}
 static NSInteger DAAEAccentIdx(void) {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
     if (![ud objectForKey:@"DAAE.accentIdx"]) return 0;
@@ -495,15 +520,16 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL dim) {
                 [s updateSpinStatus];
         }];
 
+    CGFloat panelCR = DAAECornerRadius(22);
     self.blurBG = [[UIVisualEffectView alloc] initWithEffect:
         [UIBlurEffect effectWithStyle:DAAEBlurStyle()]];
-    self.blurBG.layer.cornerRadius = 22;
+    self.blurBG.layer.cornerRadius = panelCR;
     self.blurBG.clipsToBounds      = YES;
     [self.view addSubview:self.blurBG];
 
     self.panel = [[UIView alloc] initWithFrame:CGRectZero];
     self.panel.backgroundColor    = PanelBG();
-    self.panel.layer.cornerRadius = 22;
+    self.panel.layer.cornerRadius = panelCR;
     self.panel.layer.borderWidth  = 0.6;
     self.panel.layer.borderColor  = (DAAEDark()
         ? [UIColor colorWithWhite:1 alpha:0.13]
@@ -550,10 +576,18 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL dim) {
     CGFloat sh = self.view.bounds.size.height;
     if (sw <= 0) sw = 320; if (sh <= 0) sh = 480;
 
-    CGFloat pw = MIN(sw - 120.0, 480.0);
-    pw = MAX(pw, 280.0);
-    CGFloat ph = MIN(sh - 60.0, 560.0);
-    ph = MAX(ph, 340.0);
+    // Tamaño del panel según preferencia (0=S, 1=M, 2=L)
+    // Mínimo absoluto: 300×380 — no se puede hacer más pequeño
+    CGFloat pwMax, phMax;
+    switch (DAAEMenuSize()) {
+        case 0:  pwMax = 360; phMax = 440; break; // Pequeño
+        case 2:  pwMax = 520; phMax = 620; break; // Grande
+        default: pwMax = 460; phMax = 560; break; // Mediano
+    }
+    CGFloat pw = MIN(sw - 80.0, pwMax);
+    pw = MAX(pw, 300.0);
+    CGFloat ph = MIN(sh - 50.0, phMax);
+    ph = MAX(ph, 380.0);
 
     CGRect f = self.panel.frame;
     if (f.size.width < 1) {
@@ -820,35 +854,35 @@ static NSString *TabName(NSInteger i) {
 
     // ── TAB 0: ESP ────────────────────────────────────────────────────────────
     if (self.page == 0) {
-        y = [self addToggleEN:@"Bật ESP"      ES:@"Maestro ESP"   VI:@"Chế độ ESP"   key:@"ESPEnabled" fallback:YES y:y];
+        y = [self addToggleEN:@"ESP Master"    ES:@"ESP Maestro"   VI:@"Bật ESP"      key:@"ESPEnabled" fallback:YES y:y];
         y = [self addSection:DAAEStr(@"— DRAW —",@"— DIBUJO —",@"— VẼ —") y:y];
-        y = [self addToggleEN:@"Khung ESP"    ES:@"Caja ESP"      VI:@"Hộp ESP"      key:@"Box"        fallback:YES y:y];
-        y = [self addToggleEN:@"Đường Kẻ ESP" ES:@"Línea ESP"     VI:@"Đường thẳng" key:@"Line"       fallback:NO  y:y];
-        y = [self addToggleEN:@"Bộ Xương"     ES:@"Esqueleto"     VI:@"Xương"        key:@"Skeleton"   fallback:NO  y:y];
-        y = [self addToggleEN:@"Đầu Đỏ"       ES:@"Punto cabeza"  VI:@"Chấm đầu"     key:@"HeadRedDot" fallback:NO  y:y];
-        y = [self addToggleEN:@"Thanh Máu"    ES:@"Barra de vida" VI:@"Thanh máu"   key:@"Health"     fallback:YES y:y];
-        y = [self addToggleEN:@"Tên"          ES:@"Nombre"        VI:@"Tên"          key:@"Name"       fallback:YES y:y];
-        y = [self addToggleEN:@"Khoảng Cách"  ES:@"Distancia"     VI:@"Khoảng cách" key:@"Dis"        fallback:YES y:y];
-        y = [self addToggleEN:@"ESP Sạch"     ES:@"ESP limpio"    VI:@"ESP sạch"     key:@"CleanESP"   fallback:YES y:y];
+        y = [self addToggleEN:@"Box ESP"       ES:@"Caja ESP"      VI:@"Khung ESP"    key:@"Box"        fallback:YES y:y];
+        y = [self addToggleEN:@"Line ESP"      ES:@"Línea ESP"     VI:@"Đường Kẻ ESP" key:@"Line"       fallback:NO  y:y];
+        y = [self addToggleEN:@"Skeleton"      ES:@"Esqueleto"     VI:@"Bộ Xương"     key:@"Skeleton"   fallback:NO  y:y];
+        y = [self addToggleEN:@"Head Dot"      ES:@"Punto cabeza"  VI:@"Đầu Đỏ"       key:@"HeadRedDot" fallback:NO  y:y];
+        y = [self addToggleEN:@"Health Bar"    ES:@"Barra de vida" VI:@"Thanh Máu"    key:@"Health"     fallback:YES y:y];
+        y = [self addToggleEN:@"Name"          ES:@"Nombre"        VI:@"Tên"          key:@"Name"       fallback:YES y:y];
+        y = [self addToggleEN:@"Distance"      ES:@"Distancia"     VI:@"Khoảng Cách"  key:@"Dis"        fallback:YES y:y];
+        y = [self addToggleEN:@"Clean ESP"     ES:@"ESP limpio"    VI:@"ESP Sạch"     key:@"CleanESP"   fallback:YES y:y];
         y = [self addSection:DAAEStr(@"— FOV —",@"— FOV —",@"— FOV —") y:y];
-        y = [self addToggleEN:@"Hiện Vòng FOV" ES:@"Mostrar FOV"  VI:@"Hiện FOV"     key:@"ShowFov"    fallback:YES y:y];
-        y = [self addSliderEN:@"Bán Kính FOV"  ES:@"Tamaño FOV"   VI:@"Cỡ FOV"
+        y = [self addToggleEN:@"Show FOV"      ES:@"Mostrar FOV"   VI:@"Hiện Vòng FOV" key:@"ShowFov"   fallback:YES y:y];
+        y = [self addSliderEN:@"FOV Size"      ES:@"Tamaño FOV"    VI:@"Bán Kính FOV"
                           key:@"FovSize" min:5 max:48 fallback:40 y:y];
 
     // ── TAB 1: AIM ────────────────────────────────────────────────────────────
     } else if (self.page == 1) {
-        y = [self addToggleEN:@"Bật Aimbot"    ES:@"Activar Aimbot"  VI:@"Bật Aimbot"      key:@"ESPEnabled" fallback:YES y:y];
-        y = [self addToggleEN:@"Aim Line"      ES:@"Línea objetivo"  VI:@"Đường mục tiêu"  key:@"AimTargetLine" fallback:YES y:y];
-        y = [self addToggleEN:@"Hiện Vòng FOV" ES:@"Mostrar FOV"     VI:@"Hiện FOV"         key:@"ShowFov"    fallback:YES y:y];
-        y = [self addToggleEN:@"Bỏ Qua Bot"   ES:@"Ignorar bots"    VI:@"Bỏ qua bot"       key:@"CleanESP"   fallback:YES y:y];
-        y = [self addToggleEN:@"Bỏ Qua Gục"   ES:@"Ignorar caídos"  VI:@"Bỏ qua gục"       key:@"BalancedRender" fallback:NO y:y];
+        y = [self addToggleEN:@"Enable Aimbot"  ES:@"Activar Aimbot"  VI:@"Bật Aimbot"      key:@"ESPEnabled" fallback:YES y:y];
+        y = [self addToggleEN:@"Aim Line"       ES:@"Línea objetivo"  VI:@"Đường mục tiêu"  key:@"AimTargetLine" fallback:YES y:y];
+        y = [self addToggleEN:@"Show FOV"       ES:@"Mostrar FOV"     VI:@"Hiện Vòng FOV"   key:@"ShowFov"    fallback:YES y:y];
+        y = [self addToggleEN:@"Skip Bots"      ES:@"Ignorar bots"    VI:@"Bỏ qua bot"      key:@"CleanESP"   fallback:YES y:y];
+        y = [self addToggleEN:@"Skip Downed"    ES:@"Ignorar caídos"  VI:@"Bỏ qua gục"      key:@"BalancedRender" fallback:NO y:y];
 
-        y = [self addSection:DAAEStr(@"— ĐIỀU KIỆN KÍCH HOẠT —",@"— ACTIVACIÓN —",@"— KÍCH HOẠT —") y:y];
+        y = [self addSection:DAAEStr(@"— ACTIVATION —",@"— ACTIVACIÓN —",@"— KÍCH HOẠT —") y:y];
 
         // Picker de activación — pill horizontal
-        NSArray *actEN = @[@"Luôn Luôn", @"Khi Bắn", @"Khi Ngắm"];
-        NSArray *actES = @[@"Siempre",   @"Al Disparar", @"Al Apuntar"];
-        NSArray *actVI = @[@"Luôn luôn", @"Khi bắn",    @"Khi ngắm"];
+        NSArray *actEN = @[@"Always",   @"On Fire",    @"On Aim"];
+        NSArray *actES = @[@"Siempre",  @"Al Disparar",@"Al Apuntar"];
+        NSArray *actVI = @[@"Luôn luôn",@"Khi bắn",   @"Khi ngắm"];
         NSArray<NSString *> *actOpts = @[
             DAAEStr(actEN[0], actES[0], actVI[0]),
             DAAEStr(actEN[1], actES[1], actVI[1]),
@@ -871,13 +905,13 @@ static NSString *TabName(NSInteger i) {
         [self.scroll addSubview:actPicker];
         y += 58;
 
-        y = [self addSection:DAAEStr(@"— VỊ TRÍ NGẮM —",@"— POSICIÓN AIM —",@"— VỊ TRÍ —") y:y];
+        y = [self addSection:DAAEStr(@"— AIM POSITION —",@"— POSICIÓN AIM —",@"— VỊ TRÍ NGẮM —") y:y];
 
         // Picker de aim type — pill horizontal
         NSArray *aimOpts = @[
-            DAAEStr(@"Đầu", @"Cabeza", @"Đầu"),
-            DAAEStr(@"Cổ",  @"Cuello", @"Cổ"),
-            DAAEStr(@"Thân",@"Cuerpo", @"Thân")
+            DAAEStr(@"Head", @"Cabeza", @"Đầu"),
+            DAAEStr(@"Neck", @"Cuello", @"Cổ"),
+            DAAEStr(@"Body", @"Cuerpo", @"Thân")
         ];
         float aimRaw = AimRaw();
         NSInteger aimSel = (aimRaw >= 0 && aimRaw <= 2) ? (NSInteger)aimRaw : 0;
@@ -896,12 +930,12 @@ static NSString *TabName(NSInteger i) {
         [self.scroll addSubview:aimPicker];
         y += 58;
 
-        y = [self addSection:DAAEStr(@"— ƯU TIÊN MỤC TIÊU —",@"— PRIORIDAD —",@"— ƯU TIÊN —") y:y];
-        y = [self addSliderEN:@"Bán Kính FOV" ES:@"Tamaño de FOV" VI:@"Bán Kính FOV"
+        y = [self addSection:DAAEStr(@"— PRIORITY —",@"— PRIORIDAD —",@"— ƯU TIÊN —") y:y];
+        y = [self addSliderEN:@"FOV Radius"   ES:@"Radio FOV"      VI:@"Bán Kính FOV"
                           key:@"FovSize" min:5 max:48 fallback:40 y:y];
-        y = [self addSliderEN:@"Độ Dày FOV"   ES:@"Tamaño de Silent FOV"   VI:@"Độ Dày FOV"
+        y = [self addSliderEN:@"FOV Thickness" ES:@"Grosor FOV"    VI:@"Độ Dày FOV"
                           key:@"SilentFovSize" min:0 max:10 fallback:0 y:y];
-        y = [self addSection:DAAEStr(@"— VŨ KHÍ —",@"— ARMAS —",@"— VŨ KHÍ —") y:y];
+        y = [self addSection:DAAEStr(@"— WEAPON —",@"— ARMAS —",@"— VŨ KHÍ —") y:y];
         y = [self addToggleEN:@"Fast Fire"   ES:@"Disparo Rápido" VI:@"Bắn Nhanh"  key:@"FastFire"      fallback:NO y:y];
         y = [self addToggleEN:@"No Reload"   ES:@"Sin Recarga"    VI:@"Không Nạp"  key:@"ShootNoReload" fallback:NO y:y];
 
@@ -1055,33 +1089,46 @@ static NSString *TabName(NSInteger i) {
         // ── COLOR DE ACENTO ───────────────────────────────────────────────────
         y = [self addSection:DAAEStr(@"— ACCENT COLOR —",@"— COLOR ACENTO —",@"— MÀU NHẤN —") y:y];
 
-        // Fila con 5 círculos de color
+        // Fila con 6 círculos de color (idx 5 = negro/blanco según modo)
         UIView *accentRow = [[UIView alloc] initWithFrame:CGRectMake(0, y, w, 60)];
         accentRow.backgroundColor    = RowBG();
-        accentRow.layer.cornerRadius = 14;
+        accentRow.layer.cornerRadius = DAAECornerRadius(14);
 
-        UIColor *accentColors[5] = {
-            [UIColor colorWithRed:0.26 green:0.78 blue:0.90 alpha:1],  // Celeste
-            [UIColor colorWithRed:1.00 green:0.60 blue:0.10 alpha:1],  // Naranja
-            [UIColor colorWithRed:0.95 green:0.22 blue:0.22 alpha:1],  // Rojo
-            [UIColor colorWithRed:0.95 green:0.82 blue:0.14 alpha:1],  // Amarillo
-            [UIColor colorWithRed:0.24 green:0.82 blue:0.50 alpha:1],  // Verde
+        UIColor *accentColors[6] = {
+            [UIColor colorWithRed:0.26 green:0.78 blue:0.90 alpha:1],  // 0 Celeste
+            [UIColor colorWithRed:1.00 green:0.60 blue:0.10 alpha:1],  // 1 Naranja
+            [UIColor colorWithRed:0.95 green:0.22 blue:0.22 alpha:1],  // 2 Rojo
+            [UIColor colorWithRed:0.95 green:0.82 blue:0.14 alpha:1],  // 3 Amarillo
+            [UIColor colorWithRed:0.24 green:0.82 blue:0.50 alpha:1],  // 4 Verde
+            DAAEDark() ? UIColor.whiteColor : UIColor.blackColor,      // 5 Auto B/W
         };
         NSInteger curAccent = DAAEAccentIdx();
-        CGFloat circD = 32;
-        CGFloat totalW = 5 * circD + 4 * 10;
+        CGFloat circD = 30;
+        CGFloat totalW = 6 * circD + 5 * 8;
         CGFloat startX = (w - totalW) / 2.0;
-        for (NSInteger k = 0; k < 5; k++) {
+        for (NSInteger k = 0; k < 6; k++) {
             UIButton *cb = [UIButton buttonWithType:UIButtonTypeCustom];
-            cb.frame = CGRectMake(startX + k * (circD + 10), (60 - circD) / 2.0, circD, circD);
+            cb.frame = CGRectMake(startX + k * (circD + 8), (60 - circD) / 2.0, circD, circD);
             cb.backgroundColor    = accentColors[(NSUInteger)k];
             cb.layer.cornerRadius = circD / 2.0;
-            cb.clipsToBounds      = YES;
+            cb.clipsToBounds      = NO;
             if (k == curAccent) {
                 cb.layer.borderWidth = 3;
-                cb.layer.borderColor = (DAAEDark()
-                    ? [UIColor colorWithWhite:1 alpha:0.85]
-                    : [UIColor colorWithWhite:0 alpha:0.5]).CGColor;
+                cb.layer.borderColor = DAAEAccentColor().CGColor;
+                cb.layer.shadowColor   = DAAEAccentColor().CGColor;
+                cb.layer.shadowRadius  = 4;
+                cb.layer.shadowOpacity = 0.5;
+                cb.layer.shadowOffset  = CGSizeZero;
+            }
+            // Borde sutil para el círculo negro/blanco en modo opuesto
+            if (k == 5) {
+                if (!DAAEDark()) {
+                    // negro sobre fondo claro: borde gris para visibilidad
+                    if (k != curAccent) {
+                        cb.layer.borderWidth = 1;
+                        cb.layer.borderColor = [UIColor colorWithWhite:0 alpha:0.25].CGColor;
+                    }
+                }
             }
             objc_setAssociatedObject(cb, "accentIdx", @(k), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
             [cb addTarget:self action:@selector(accentTap:)
@@ -1093,33 +1140,62 @@ static NSString *TabName(NSInteger i) {
 
         // Descripción del acento activo
         NSArray *accentNames = @[
-            DAAEStr(@"Cyan",   @"Celeste", @"Xanh ngọc"),
-            DAAEStr(@"Orange", @"Naranja", @"Cam"),
-            DAAEStr(@"Red",    @"Rojo",    @"Đỏ"),
-            DAAEStr(@"Yellow", @"Amarillo",@"Vàng"),
-            DAAEStr(@"Green",  @"Verde",   @"Xanh lá"),
+            DAAEStr(@"Cyan",   @"Celeste",  @"Xanh ngọc"),
+            DAAEStr(@"Orange", @"Naranja",  @"Cam"),
+            DAAEStr(@"Red",    @"Rojo",     @"Đỏ"),
+            DAAEStr(@"Yellow", @"Amarillo", @"Vàng"),
+            DAAEStr(@"Green",  @"Verde",    @"Xanh lá"),
+            DAAEStr(DAAEDark() ? @"White" : @"Black",
+                    DAAEDark() ? @"Blanco" : @"Negro",
+                    DAAEDark() ? @"Trắng" : @"Đen"),
         ];
         UILabel *accentHint = [[UILabel alloc] initWithFrame:CGRectMake(0, y, w, 18)];
-        accentHint.text          = accentNames[(NSUInteger)curAccent];
+        accentHint.text          = (curAccent >= 0 && curAccent < 6)
+                                   ? accentNames[(NSUInteger)curAccent] : @"";
         accentHint.textColor     = DAAEAccentColor();
         accentHint.font          = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
         accentHint.textAlignment = NSTextAlignmentCenter;
         [self.scroll addSubview:accentHint];
         y += 26;
 
-        // Nota: modo claro → acento UI negro; oscuro → acento UI blanco
-        UILabel *accentNote = [[UILabel alloc] initWithFrame:CGRectMake(4, y, w - 8, 28)];
-        accentNote.text          = DAAEStr(
-            @"In Light Mode, UI accent is black. In Dark Mode, white.",
-            @"Modo claro → acento UI negro. Modo oscuro → acento UI blanco.",
-            @"Sáng → đen. Tối → trắng."
-        );
-        accentNote.textColor     = SectionClr();
-        accentNote.font          = [UIFont systemFontOfSize:10];
-        accentNote.numberOfLines = 2;
-        accentNote.textAlignment = NSTextAlignmentCenter;
-        [self.scroll addSubview:accentNote];
-        y += 36;
+        // ── ESQUINAS ──────────────────────────────────────────────────────────
+        y = [self addSection:DAAEStr(@"— CORNERS —",@"— ESQUINAS —",@"— GÓC —") y:y];
+        NSArray *cornerEN = @[@"Rounded",          @"Square"];
+        NSArray *cornerES = @[@"Puntas Redondeadas",@"Puntas Cuadradas"];
+        NSArray *cornerVI = @[@"Góc Tròn",          @"Góc Vuông"];
+        NSArray<NSString *> *cornerOpts = @[
+            DAAEStr(cornerEN[0], cornerES[0], cornerVI[0]),
+            DAAEStr(cornerEN[1], cornerES[1], cornerVI[1])
+        ];
+        DAAEPillPicker *cornerPicker = [[DAAEPillPicker alloc]
+            initWithOptions:cornerOpts selected:DAAECornerStyle() width:w];
+        cornerPicker.frame = CGRectMake(0, y, w, 50);
+        cornerPicker.onSelected = ^(NSInteger idx) {
+            DAAESetCornerStyle(idx);
+            [wself refreshThemeInPlace];
+        };
+        [self.scroll addSubview:cornerPicker];
+        y += 58;
+
+        // ── TAMAÑO DEL MENÚ ───────────────────────────────────────────────────
+        y = [self addSection:DAAEStr(@"— MENU SIZE —",@"— TAMAÑO MENÚ —",@"— CỠ MENU —") y:y];
+        NSArray *sizeEN = @[@"Small",   @"Medium",  @"Large"];
+        NSArray *sizeES = @[@"Pequeño", @"Mediano", @"Grande"];
+        NSArray *sizeVI = @[@"Nhỏ",     @"Vừa",     @"Lớn"];
+        NSArray<NSString *> *sizeOpts = @[
+            DAAEStr(sizeEN[0], sizeES[0], sizeVI[0]),
+            DAAEStr(sizeEN[1], sizeES[1], sizeVI[1]),
+            DAAEStr(sizeEN[2], sizeES[2], sizeVI[2])
+        ];
+        DAAEPillPicker *sizePicker = [[DAAEPillPicker alloc]
+            initWithOptions:sizeOpts selected:DAAEMenuSize() width:w];
+        sizePicker.frame = CGRectMake(0, y, w, 50);
+        sizePicker.onSelected = ^(NSInteger idx) {
+            DAAESetMenuSize(idx);
+            [wself viewDidLayoutSubviews];
+        };
+        [self.scroll addSubview:sizePicker];
+        y += 58;
 
         // ── INFO ─────────────────────────────────────────────────────────────
         y = [self addSection:DAAEStr(@"— INFO —",@"— INFO —",@"— INFO —") y:y];
