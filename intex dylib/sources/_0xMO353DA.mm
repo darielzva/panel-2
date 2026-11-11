@@ -81,6 +81,20 @@ static void DAAESetPanelScale(CGFloat s) {
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
+// TRANSPARENCIA DEL PANEL — 0.40–1.00, default 1.0
+static CGFloat DAAEPanelAlpha(void) {
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    if (![ud objectForKey:@"DAAE.panelAlpha"]) return 1.0;
+    double v = [ud doubleForKey:@"DAAE.panelAlpha"];
+    if (v < 0.40 || v > 1.0) return 1.0;
+    return (CGFloat)v;
+}
+static void DAAESetPanelAlpha(CGFloat a) {
+    [[NSUserDefaults standardUserDefaults] setDouble:(double)MAX(0.40, MIN(1.0, a))
+                                            forKey:@"DAAE.panelAlpha"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COLOR DE ACENTO
 // 0=Celeste(default)  1=Naranja  2=Rojo  3=Amarillo  4=Verde
@@ -426,6 +440,23 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL dim) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WARNING LABEL helper — texto de advertencia en rojo/naranja
+// ─────────────────────────────────────────────────────────────────────────────
+static CGFloat AddWarningLabel(NSString *text, UIScrollView *scroll, CGFloat w, CGFloat y) {
+    UILabel *warn = [[UILabel alloc] initWithFrame:CGRectMake(0, y, w, 0)];
+    warn.text = text;
+    warn.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
+    warn.textColor = [UIColor colorWithRed:0.95 green:0.22 blue:0.22 alpha:1.0];
+    warn.numberOfLines = 0;
+    warn.lineBreakMode = NSLineBreakByWordWrapping;
+    warn.alpha = 0.85;
+    CGSize sz = [warn sizeThatFits:CGSizeMake(w, 999)];
+    warn.frame = CGRectMake(0, y, w, sz.height);
+    [scroll addSubview:warn];
+    return y + sz.height + 10;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PANEL — _0xDEADBEEE
 // ─────────────────────────────────────────────────────────────────────────────
 @interface _0xDEADBEEE () <UIGestureRecognizerDelegate>
@@ -464,8 +495,9 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL dim) {
                            @"AnLive",@"BalancedRender",@"HideFeatureButtons"])
         ESPPrefsSetBool(k, NO);
     ESPPrefsSetBool(@"ShowFov", YES);
-    // Modo claro por defecto
-    [ud setBool:NO forKey:@"DAAE.darkMode"];
+    // Modo oscuro + acento rojo por defecto (igual a las imágenes)
+    [ud setBool:YES forKey:@"DAAE.darkMode"];
+    [ud setInteger:2 forKey:@"DAAE.accentIdx"]; // Rojo por defecto
     [ud synchronize];
     ESPPrefsSetFloat(@"AimType",        -1);
     ESPPrefsSetFloat(@"AimActivation",   1);
@@ -500,6 +532,7 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL dim) {
         [UIBlurEffect effectWithStyle:DAAEBlurStyle()]];
     self.blurBG.layer.cornerRadius = RadiusPanel();
     self.blurBG.clipsToBounds = YES;
+    self.blurBG.alpha = DAAEPanelAlpha();
     [self.view addSubview:self.blurBG];
 
     self.panel = [[UIView alloc] initWithFrame:CGRectZero];
@@ -510,6 +543,7 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL dim) {
         ? [UIColor colorWithWhite:1 alpha:0.13]
         : [UIColor colorWithWhite:0 alpha:0.10]).CGColor;
     self.panel.clipsToBounds = YES;
+    self.panel.alpha = DAAEPanelAlpha();
     [self.view addSubview:self.panel];
 
     self.sidebar = [[UIView alloc] initWithFrame:CGRectZero];
@@ -783,6 +817,9 @@ static NSString *TabName(NSInteger i) {
 }
 
 - (void)refreshThemeInPlace {
+    CGFloat alpha = DAAEPanelAlpha();
+    self.panel.alpha  = alpha;
+    self.blurBG.alpha = alpha;
     self.panel.backgroundColor = PanelBG();
     self.panel.layer.cornerRadius = RadiusPanel();
     self.panel.layer.borderColor = (DAAEDark()
@@ -841,6 +878,12 @@ static NSString *TabName(NSInteger i) {
 
     // ── TAB 1: AIM ────────────────────────────────────────────────────────────
     } else if (self.page == 1) {
+        // Advertencia aimbot — igual a la imagen de referencia
+        NSString *aimWarn = DAAEStr(
+            @"Use Aimbot with restraint. Avoid excessive headshots to reduce unexpected detections.",
+            @"Usa el Aimbot con moderación. Evita muchos headshots para reducir detecciones inesperadas.",
+            @"Sử dụng Aimbot có chừng mực. Tránh headshot quá nhiều để giảm nguy cơ bị phát hiện.");
+        y = AddWarningLabel(aimWarn, self.scroll, [self contentWidth], y);
         y=[self addToggleEN:@"Enable Aimbot" ES:@"Activar Aimbot"   VI:@"Bật Aimbot"
                         key:@"AimTargetLine" fallback:NO y:y];
         y=[self addToggleEN:@"Aim Line"      ES:@"Línea objetivo"   VI:@"Aim Line"
@@ -990,6 +1033,12 @@ static NSString *TabName(NSInteger i) {
 
     // ── TAB 3: MISC ───────────────────────────────────────────────────────────
     } else if (self.page == 3) {
+        // Advertencia opciones peligrosas — igual a la imagen de referencia
+        NSString *miscWarn = DAAEStr(
+            @"Some options in this section may not be entirely safe. Use with caution and at your own risk.",
+            @"Algunas opciones en esta sección pueden no ser completamente seguras. Úsalas con precaución y bajo tu propio riesgo.",
+            @"Một số tùy chọn trong mục này có thể không hoàn toàn an toàn. Hãy cẩn thận và tự chịu trách nhiệm.");
+        y = AddWarningLabel(miscWarn, self.scroll, [self contentWidth], y);
         y=[self addSection:DAAEStr(@"— EXTRAS —",@"— EXTRAS —",@"— EXTRAS —") y:y];
         y=[self addToggleEN:@"Ghost"         ES:@"Fantasma"         VI:@"Ghost"
                         key:@"GhostModeFloating" fallback:NO y:y];
@@ -1025,14 +1074,52 @@ static NSString *TabName(NSInteger i) {
             [self.scroll addSubview:self.spinStatusLabel];
             [self updateSpinStatus]; y+=40;
         }
-        y=[self addToggleEN:@"Hide in Screenshots" ES:@"Ocultar en capturas" VI:@"Ẩn Khi Chụp"
-                        key:@"AnLive" fallback:NO y:y];
         y=[self addToggleEN:@"Balanced Render"     ES:@"Render equilibrado" VI:@"Render Cân Bằng"
                         key:@"BalancedRender" fallback:NO y:y];
 
     // ── TAB 4: SETTINGS ───────────────────────────────────────────────────────
     } else {
         CGFloat w=[self contentWidth];
+
+        // ── Stream Mode ───────────────────────────────────────────────────────
+        y=[self addSection:DAAEStr(@"— DISPLAY —",@"— PANTALLA —",@"— HIỂN THỊ —") y:y];
+        y=[self addToggleEN:@"Stream Mode" ES:@"Modo Streaming" VI:@"Chế Độ Stream"
+                        key:@"AnLive" fallback:NO y:y];
+
+        // ── Menu Transparency slider ──────────────────────────────────────────
+        {
+            UIView *tRow = [[UIView alloc] initWithFrame:CGRectMake(0,y,w,72)];
+            tRow.backgroundColor    = RowBG();
+            tRow.layer.cornerRadius = RadiusRow();
+
+            UILabel *tLbl = [[UILabel alloc] initWithFrame:CGRectMake(18,8,w-90,22)];
+            tLbl.text      = DAAEStr(@"Menu Transparency",@"Transparencia",@"Độ Trong Suốt");
+            tLbl.textColor = LblMain();
+            tLbl.font      = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+            [tRow addSubview:tLbl];
+
+            UILabel *tVal = [[UILabel alloc] initWithFrame:CGRectMake(w-68,8,56,22)];
+            tVal.textAlignment = NSTextAlignmentRight;
+            tVal.textColor = DAAEAccentColor();
+            tVal.font      = [UIFont systemFontOfSize:15 weight:UIFontWeightBold];
+            tVal.text = [NSString stringWithFormat:@"%.2f", DAAEPanelAlpha()];
+            [tRow addSubview:tVal];
+
+            UISlider *tSl = [[UISlider alloc] initWithFrame:CGRectMake(14,42,w-28,22)];
+            tSl.minimumValue = 0.40f; tSl.maximumValue = 1.0f;
+            tSl.value = (float)DAAEPanelAlpha();
+            tSl.minimumTrackTintColor = DAAEAccentColor();
+            tSl.maximumTrackTintColor = DAAEDark()
+                ? [UIColor colorWithWhite:1 alpha:0.14]
+                : [UIColor colorWithWhite:0 alpha:0.10];
+            tSl.thumbTintColor = DAAEAccentColor();
+            objc_setAssociatedObject(tSl,"alphaValLbl",tVal,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            [tSl addTarget:self action:@selector(_panelAlphaChanged:)
+                forControlEvents:UIControlEventValueChanged];
+            [tRow addSubview:tSl];
+            [self.scroll addSubview:tRow];
+            y += 80;
+        }
 
         // ── Idioma ────────────────────────────────────────────────────────────
         y=[self addSection:DAAEStr(@"— LANGUAGE —",@"— IDIOMA —",@"— NGÔN NGỮ —") y:y];
@@ -1080,7 +1167,7 @@ static NSString *TabName(NSInteger i) {
         [self.scroll addSubview:modePicker]; y+=58;
 
         // ── Esquinas ─────────────────────────────────────────────────────────
-        y=[self addSection:DAAEStr(@"— CORNERS —",@"— ESQUINAS —",@"— GÓC —") y:y];
+        y=[self addSection:DAAEStr(@"— MENU SHAPE —",@"— FORMA MENÚ —",@"— HÌNH DẠNG —") y:y];
         NSArray *cornerOpts=@[
             DAAEStr(@"Rounded",@"Redondeadas",@"Tròn"),
             DAAEStr(@"Square", @"Cuadradas",  @"Vuông"),
@@ -1095,12 +1182,12 @@ static NSString *TabName(NSInteger i) {
         [self.scroll addSubview:cornerPicker]; y+=58;
 
         // ── Tamaño del panel — slider + botón reset ──────────────────────────
-        y=[self addSection:DAAEStr(@"— PANEL SIZE —",@"— TAMAÑO MENÚ —",@"— CỠ PANEL —") y:y];
+        y=[self addSection:DAAEStr(@"— MENU SCALE —",@"— ESCALA MENÚ —",@"— CỠ MENU —") y:y];
         UIView *sizeRow=[[UIView alloc] initWithFrame:CGRectMake(0,y,w,72)];
         sizeRow.backgroundColor=RowBG(); sizeRow.layer.cornerRadius=RadiusRow();
 
         UILabel *sizeLbl=[[UILabel alloc] initWithFrame:CGRectMake(18,8,w-100,22)];
-        sizeLbl.text=DAAEStr(@"Panel Size",@"Tamaño",@"Cỡ Màn Hình");
+        sizeLbl.text=DAAEStr(@"Menu Scale",@"Escala Menú",@"Tỷ Lệ Menu");
         sizeLbl.textColor=LblMain();
         sizeLbl.font=[UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
         [sizeRow addSubview:sizeLbl];
@@ -1281,6 +1368,14 @@ static NSString *TabName(NSInteger i) {
     self.panel.frame  = CGRectZero;
     self.blurBG.frame = CGRectZero;
     [self viewDidLayoutSubviews];
+}
+
+- (void)_panelAlphaChanged:(UISlider *)sl {
+    UILabel *val = objc_getAssociatedObject(sl, "alphaValLbl");
+    DAAESetPanelAlpha(sl.value);
+    if (val) val.text = [NSString stringWithFormat:@"%.2f", sl.value];
+    self.panel.alpha  = sl.value;
+    self.blurBG.alpha = sl.value;
 }
 
 - (void)langTap:(UIButton *)sender {
