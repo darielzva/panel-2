@@ -1,4 +1,8 @@
 #import <UIKit/UIKit.h>
+#import "ModMenuViewController.h"
+#import "MizzeTheme.h"
+#import "MizzeMenuPrefs.h"
+#include <cmath>
 #import <objc/runtime.h>
 #import "../esp/drawing_view/esp.h"
 #import "../esp/drawing_view/ESPStyle.h"
