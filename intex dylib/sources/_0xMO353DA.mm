@@ -16,17 +16,17 @@ static UIImage *SFSym(NSString *name, CGFloat pts, UIImageSymbolWeight w) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MEDIDAS (igual a las imágenes de referencia)
+// MEDIDAS
 // ─────────────────────────────────────────────────────────────────────────────
-static const CGFloat kSidebarW = 64.0;
-static const CGFloat kHeaderH  = 62.0;
-static const CGFloat kRowH     = 56.0;
-static const CGFloat kRowStep  = 62.0;   // fila + gap compacto
-static const CGFloat kSliderH  = 72.0;
-static const CGFloat kSliderStep = 78.0;
+static const CGFloat kSidebarW  = 64.0;
+static const CGFloat kHeaderH   = 62.0;
+static const CGFloat kRowH      = 56.0;
+static const CGFloat kRowStep   = 62.0;
+static const CGFloat kSliderH   = 72.0;
+static const CGFloat kSliderStep= 78.0;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IDIOMA — 0=EN (default), 1=ES, 2=VI
+// IDIOMA
 // ─────────────────────────────────────────────────────────────────────────────
 static NSInteger DAAELang(void) {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
@@ -59,7 +59,6 @@ static void DAAESetDark(BOOL dark) {
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
-// ESQUINAS — NO = redondeadas (default), YES = cuadradas
 static BOOL DAAESquareCorners(void) {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
     if (![ud objectForKey:@"DAAE.squareCorners"]) return NO;
@@ -74,7 +73,6 @@ static CGFloat RadiusRow(void)   { return DAAESquareCorners() ? 5  : 20; }
 static CGFloat RadiusChip(void)  { return DAAESquareCorners() ? 5  : 16; }
 static CGFloat RadiusPill(void)  { return DAAESquareCorners() ? 8  : 22; }
 
-// TAMAÑO DEL PANEL — 0.75–1.30
 static CGFloat DAAEPanelScale(void) {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
     if (![ud objectForKey:@"DAAE.panelScale"]) return 1.0;
@@ -87,7 +85,6 @@ static void DAAESetPanelScale(CGFloat s) {
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
-// TRANSPARENCIA DEL PANEL — 0.40–1.00
 static CGFloat DAAEPanelAlpha(void) {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
     if (![ud objectForKey:@"DAAE.panelAlpha"]) return 1.0;
@@ -101,8 +98,54 @@ static void DAAESetPanelAlpha(CGFloat a) {
     [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GRADIENTE DEL PANEL
+// 0=Ninguno  1=Azul  2=Morado  3=Dorado  4=Verde  5=Rojo  6=Oscuro puro
+// ─────────────────────────────────────────────────────────────────────────────
+static NSInteger DAAEGradientPreset(void) {
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    if (![ud objectForKey:@"DAAE.gradientPreset"]) return 0;
+    NSInteger v = [ud integerForKey:@"DAAE.gradientPreset"];
+    return (v >= 0 && v <= 6) ? v : 0;
+}
+static void DAAESetGradientPreset(NSInteger p) {
+    [[NSUserDefaults standardUserDefaults] setInteger:p forKey:@"DAAE.gradientPreset"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+// Devuelve los dos colores del gradiente para el preset dado
+static void DAAEGradientColors(NSInteger preset, UIColor **c1, UIColor **c2) {
+    switch (preset) {
+        case 1: // Azul — igual al panel blanco de referencia
+            *c1 = [UIColor colorWithRed:0.78 green:0.90 blue:1.00 alpha:0.65];
+            *c2 = [UIColor colorWithRed:0.55 green:0.75 blue:0.98 alpha:0.55];
+            break;
+        case 2: // Morado
+            *c1 = [UIColor colorWithRed:0.72 green:0.60 blue:0.95 alpha:0.65];
+            *c2 = [UIColor colorWithRed:0.50 green:0.35 blue:0.88 alpha:0.55];
+            break;
+        case 3: // Dorado
+            *c1 = [UIColor colorWithRed:1.00 green:0.88 blue:0.55 alpha:0.65];
+            *c2 = [UIColor colorWithRed:0.98 green:0.70 blue:0.20 alpha:0.55];
+            break;
+        case 4: // Verde
+            *c1 = [UIColor colorWithRed:0.60 green:0.95 blue:0.72 alpha:0.65];
+            *c2 = [UIColor colorWithRed:0.24 green:0.82 blue:0.50 alpha:0.55];
+            break;
+        case 5: // Rojo
+            *c1 = [UIColor colorWithRed:1.00 green:0.65 blue:0.65 alpha:0.65];
+            *c2 = [UIColor colorWithRed:0.97 green:0.20 blue:0.22 alpha:0.55];
+            break;
+        case 6: // Oscuro puro
+            *c1 = [UIColor colorWithWhite:0.08 alpha:0.90];
+            *c2 = [UIColor colorWithWhite:0.14 alpha:0.85];
+            break;
+        default: // 0 = ninguno
+            *c1 = nil; *c2 = nil;
+            break;
+    }
+}
+
 // COLOR DE ACENTO
-// 0=Celeste 1=Naranja 2=Rojo 3=Amarillo 4=Verde 5=Negro(claro) 6=Blanco(oscuro)
 static NSInteger DAAEAccentIdx(void) {
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
     if (![ud objectForKey:@"DAAE.accentIdx"]) return 0;
@@ -136,9 +179,18 @@ static UIColor *DAAEAccentFG(void) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PALETA ADAPTATIVA — GLASS
+// PALETA ADAPTATIVA
 // ─────────────────────────────────────────────────────────────────────────────
 static UIColor *PanelBG(void) {
+    // Si hay gradiente activo, el fondo del panel es más transparente
+    // para que el gradiente CAGradientLayer se vea
+    NSInteger gr = DAAEGradientPreset();
+    if (gr > 0 && gr < 6)
+        return DAAEDark()
+            ? [UIColor colorWithWhite:0.08 alpha:0.20]
+            : [UIColor colorWithWhite:1.00 alpha:0.25];
+    if (gr == 6)
+        return [UIColor colorWithWhite:0.08 alpha:0.90];
     return DAAEDark() ? [UIColor colorWithWhite:0.10 alpha:0.40]
                       : [UIColor colorWithWhite:0.97 alpha:0.55];
 }
@@ -187,6 +239,10 @@ static UIColor *TrackOff(void) {
                       : [UIColor colorWithWhite:0 alpha:0.12];
 }
 static UIBlurEffectStyle DAAEBlurStyle(void) {
+    NSInteger gr = DAAEGradientPreset();
+    // Con gradiente claro, usar blur de material light para el efecto cristal
+    if (gr >= 1 && gr <= 5)
+        return UIBlurEffectStyleSystemUltraThinMaterialLight;
     return DAAEDark() ? UIBlurEffectStyleSystemUltraThinMaterialDark
                       : UIBlurEffectStyleSystemUltraThinMaterialLight;
 }
@@ -197,7 +253,7 @@ static void StyleSlider(UISlider *s) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AIM TYPE — -1 = sin aim
+// AIM TYPE
 // ─────────────────────────────────────────────────────────────────────────────
 static float     AimRaw(void)    { return ESPPrefsFloat(@"AimType", -1); }
 static BOOL      AimActive(void) { return AimRaw() >= 0; }
@@ -421,7 +477,7 @@ static BOOL      AimActive(void) { return AimRaw() >= 0; }
 @end
 
 // ─────────────────────────────────────────────────────────────────────────────
-// INFO ROW helper
+// INFO ROW
 // ─────────────────────────────────────────────────────────────────────────────
 static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL dim) {
     UIView *row = [[UIView alloc] initWithFrame:CGRectMake(0,0,w,kRowH)];
@@ -442,7 +498,7 @@ static UIView *InfoRow(NSString *title, NSString *value, CGFloat w, BOOL dim) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WARNING LABEL — texto normal con palabras clave resaltadas en acento
+// WARNING LABEL
 // ─────────────────────────────────────────────────────────────────────────────
 static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
                                UIScrollView *scroll, CGFloat w, CGFloat y) {
@@ -471,12 +527,13 @@ static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
 // ─────────────────────────────────────────────────────────────────────────────
 @interface _0xDEADBEEE () <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UIVisualEffectView *blurBG;
+@property (nonatomic, strong) CAGradientLayer    *gradientLayer;
 @property (nonatomic, strong) UIView             *panel;
 @property (nonatomic, strong) UIView             *sidebar;
 @property (nonatomic, strong) UIView             *contentArea;
 @property (nonatomic, strong) UIScrollView       *scroll;
 @property (nonatomic, assign) NSInteger  page;
-@property (nonatomic, assign) NSInteger  colorTarget;
+@property (nonatomic, assign) NSInteger  colorTarget;  // 0=Box 1=FOV
 @property (nonatomic, assign) CGFloat    builtWidth;
 @property (nonatomic, strong) NSMutableArray<UIView *> *controls;
 @property (nonatomic, strong) UILabel   *spinStatusLabel;
@@ -495,16 +552,12 @@ static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
 
 - (void)applyDefaults {
     NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
-
-    // Tema (guard propio): fuerza modo oscuro + acento rojo una sola vez,
-    // sin tocar las opciones que el usuario ya tenga guardadas.
     if (![ud boolForKey:@"_DAAEThemeV2"]) {
         [ud setBool:YES forKey:@"DAAE.darkMode"];
         [ud setInteger:2 forKey:@"DAAE.accentIdx"];
         [ud setBool:YES forKey:@"_DAAEThemeV2"];
         [ud synchronize];
     }
-
     if ([ud objectForKey:@"_MizzeDefaultsApplied"]) return;
     for (NSString *k in @[@"ESPEnabled",@"Box",@"Box3D",@"CleanESP",@"Name",@"Health",
                            @"Line",@"Skeleton",@"HeadRedDot",@"Dis",@"AimLag",
@@ -527,13 +580,39 @@ static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
     ESPSyncFromPrefs();
 }
 
-// Aplica fondo + transparencia (solo al cristal, el contenido queda nítido)
 - (void)applyPanelAlpha {
     CGFloat a = DAAEPanelAlpha();
     UIColor *bg = PanelBG();
     CGFloat baseA = CGColorGetAlpha(bg.CGColor);
     self.panel.backgroundColor = [bg colorWithAlphaComponent:baseA * a];
     self.blurBG.alpha = a;
+}
+
+// Aplica o actualiza el CAGradientLayer del panel según el preset actual
+- (void)applyGradient {
+    NSInteger preset = DAAEGradientPreset();
+    UIColor *c1 = nil, *c2 = nil;
+    DAAEGradientColors(preset, &c1, &c2);
+
+    if (!c1 || !c2) {
+        // Sin gradiente — quitar la capa si existe
+        if (self.gradientLayer) {
+            [self.gradientLayer removeFromSuperlayer];
+            self.gradientLayer = nil;
+        }
+        return;
+    }
+
+    if (!self.gradientLayer) {
+        self.gradientLayer = [CAGradientLayer layer];
+        self.gradientLayer.startPoint = CGPointMake(0, 0);
+        self.gradientLayer.endPoint   = CGPointMake(1, 1);
+        // Insertar debajo de todos los subviews del panel
+        [self.panel.layer insertSublayer:self.gradientLayer atIndex:0];
+    }
+    self.gradientLayer.frame  = self.panel.bounds;
+    self.gradientLayer.colors = @[(id)c1.CGColor, (id)c2.CGColor];
+    self.gradientLayer.cornerRadius = RadiusPanel();
 }
 
 - (void)viewDidLoad {
@@ -614,7 +693,7 @@ static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LAYOUT — panel grande (~90% del alto en landscape)
+// LAYOUT
 // ─────────────────────────────────────────────────────────────────────────────
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
@@ -645,6 +724,12 @@ static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
     self.panel.frame  = f;
     self.blurBG.frame = f;
 
+    // Actualizar gradiente al redimensionar
+    if (self.gradientLayer) {
+        self.gradientLayer.frame = self.panel.bounds;
+        self.gradientLayer.cornerRadius = RadiusPanel();
+    }
+
     self.sidebar.frame = CGRectMake(0,0,kSidebarW,ph);
     UIView *div = [self.panel viewWithTag:99];
     div.frame = CGRectMake(kSidebarW,14,0.5,ph-28);
@@ -659,15 +744,15 @@ static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SIDEBAR — solo íconos en círculos
+// SIDEBAR
 // ─────────────────────────────────────────────────────────────────────────────
 static NSArray<NSString *> *TabIcons(void) {
     return @[@"eye.fill",@"scope",@"paintpalette.fill",@"shippingbox.fill",@"gearshape.fill"];
 }
 static NSString *TabName(NSInteger i) {
-    NSArray *en = @[@"ESP",@"AIM",@"COLORS",@"MISC",@"SETTINGS"];
-    NSArray *es = @[@"ESP",@"APUNT",@"COLORES",@"EXTRA",@"CONFIG"];
-    NSArray *vi = @[@"ESP",@"AIM",@"MÀU",@"KHÁC",@"CÀI"];
+    NSArray *en = @[@"ESP",@"AIM",@"CUSTOMIZE",@"MISC",@"SETTINGS"];
+    NSArray *es = @[@"ESP",@"APUNT",@"ESTILO",@"EXTRA",@"CONFIG"];
+    NSArray *vi = @[@"ESP",@"AIM",@"GIAO DIỆN",@"KHÁC",@"CÀI"];
     switch (DAAELang()) {
         case 1: return es[(NSUInteger)i];
         case 2: return vi[(NSUInteger)i];
@@ -726,7 +811,7 @@ static NSString *TabName(NSInteger i) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HEADER — píldora con título grande + luna y X en círculos
+// HEADER
 // ─────────────────────────────────────────────────────────────────────────────
 - (void)buildHeader {
     for (UIView *v in self.contentArea.subviews)
@@ -807,7 +892,6 @@ static NSString *TabName(NSInteger i) {
     return y+kRowStep;
 }
 
-// Toggle con lógica propia (no ligado a una sola clave de prefs)
 - (CGFloat)addCustomToggleEN:(NSString *)en ES:(NSString *)es VI:(NSString *)vi
                           on:(BOOL)on y:(CGFloat)y handler:(void (^)(BOOL))handler {
     CGFloat w = [self contentWidth];
@@ -856,6 +940,7 @@ static NSString *TabName(NSInteger i) {
     self.blurBG.effect = [UIBlurEffect effectWithStyle:DAAEBlurStyle()];
     self.blurBG.layer.cornerRadius = RadiusPanel();
     [self applyPanelAlpha];
+    [self applyGradient];
     self.sidebar.backgroundColor = SidebarBG();
     UIView *div = [self.panel viewWithTag:99];
     div.backgroundColor = DivClr();
@@ -987,8 +1072,11 @@ static NSString *TabName(NSInteger i) {
         y=[self addToggleEN:@"No Reload"    ES:@"Sin recarga"       VI:@"Không Nạp"
                         key:@"ShootNoReload" fallback:NO y:y];
 
-    // ── TAB 2: COLORS ─────────────────────────────────────────────────────────
+    // ── TAB 2: CUSTOMIZE — COLORES ESP + ESTILO DEL PANEL ────────────────────
     } else if (self.page == 2) {
+
+        // ── Sección: ESP Colors ───────────────────────────────────────────────
+        y=[self addSection:DAAEStr(@"— ESP COLORS —",@"— COLORES ESP —",@"— MÀU ESP —") y:y];
         UISegmentedControl *seg=[[UISegmentedControl alloc] initWithItems:@[@"Box",@"FOV"]];
         seg.frame=CGRectMake(0,y,w,40);
         seg.selectedSegmentIndex=self.colorTarget;
@@ -1006,15 +1094,15 @@ static NSString *TabName(NSInteger i) {
 
         NSString *pfx=(self.colorTarget==0)?@"BoxColor":@"FovColor";
         float r=ESPPrefsFloat([pfx stringByAppendingString:@"R"],0.26);
-        float g=ESPPrefsFloat([pfx stringByAppendingString:@"G"],0.78);
+        float g2=ESPPrefsFloat([pfx stringByAppendingString:@"G"],0.78);
         float b=ESPPrefsFloat([pfx stringByAppendingString:@"B"],0.90);
 
         UILabel *swatch=[[UILabel alloc] initWithFrame:CGRectMake(0,y,w,52)];
         swatch.text=[NSString stringWithFormat:@"#%02X%02X%02X",
-            (int)round(r*255),(int)round(g*255),(int)round(b*255)];
+            (int)round(r*255),(int)round(g2*255),(int)round(b*255)];
         swatch.textAlignment=NSTextAlignmentCenter;
-        swatch.backgroundColor=[UIColor colorWithRed:r green:g blue:b alpha:1];
-        CGFloat lum=r*0.299+g*0.587+b*0.114;
+        swatch.backgroundColor=[UIColor colorWithRed:r green:g2 blue:b alpha:1];
+        CGFloat lum=r*0.299+g2*0.587+b*0.114;
         swatch.textColor=lum>0.6?UIColor.blackColor:UIColor.whiteColor;
         swatch.font=[UIFont systemFontOfSize:15 weight:UIFontWeightBold];
         swatch.layer.cornerRadius=RadiusRow();
@@ -1035,13 +1123,11 @@ static NSString *TabName(NSInteger i) {
             NSString *key=[pfx stringByAppendingString:suf[(NSUInteger)i]];
             UIView *rgbRow=[[UIView alloc] initWithFrame:CGRectMake(0,y,w,kSliderH)];
             rgbRow.backgroundColor=RowBG(); rgbRow.layer.cornerRadius=RadiusRow();
-
             UILabel *lbl=[[UILabel alloc] initWithFrame:CGRectMake(20,9,w-96,22)];
             lbl.text=DAAEStr(rgbEN[(NSUInteger)i],rgbES[(NSUInteger)i],rgbVI[(NSUInteger)i]);
             lbl.textColor=LblMain();
             lbl.font=[UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
             [rgbRow addSubview:lbl];
-
             UILabel *val=[[UILabel alloc] initWithFrame:CGRectMake(w-76,9,58,22)];
             val.textAlignment=NSTextAlignmentRight;
             val.textColor=DAAEAccentColor();
@@ -1049,20 +1135,138 @@ static NSString *TabName(NSInteger i) {
             float cur2=ESPPrefsFloat(key,def[i]);
             val.text=[NSString stringWithFormat:@"%.0f",(double)cur2*100.0];
             [rgbRow addSubview:val];
-
             UISlider *rgbSl=[[UISlider alloc] initWithFrame:CGRectMake(16,40,w-32,24)];
             rgbSl.minimumValue=0; rgbSl.maximumValue=1; rgbSl.value=cur2;
             StyleSlider(rgbSl);
-            objc_setAssociatedObject(rgbSl,"espKey",  key,   OBJC_ASSOCIATION_COPY_NONATOMIC);
-            objc_setAssociatedObject(rgbSl,"valLbl",  val,   OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-            objc_setAssociatedObject(rgbSl,"swatchRef",wSwatch, OBJC_ASSOCIATION_ASSIGN);
-            objc_setAssociatedObject(rgbSl,"swatchPfx",pfx,  OBJC_ASSOCIATION_COPY_NONATOMIC);
-            objc_setAssociatedObject(rgbSl,"menuRef",  wself2, OBJC_ASSOCIATION_ASSIGN);
+            objc_setAssociatedObject(rgbSl,"espKey",  key,     OBJC_ASSOCIATION_COPY_NONATOMIC);
+            objc_setAssociatedObject(rgbSl,"valLbl",  val,     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            objc_setAssociatedObject(rgbSl,"swatchRef",wSwatch,OBJC_ASSOCIATION_ASSIGN);
+            objc_setAssociatedObject(rgbSl,"swatchPfx",pfx,   OBJC_ASSOCIATION_COPY_NONATOMIC);
+            objc_setAssociatedObject(rgbSl,"menuRef", wself2,  OBJC_ASSOCIATION_ASSIGN);
             [rgbSl addTarget:self action:@selector(_colorSliderChanged:)
                 forControlEvents:UIControlEventValueChanged];
             [rgbRow addSubview:rgbSl];
             [self.scroll addSubview:rgbRow];
             y+=kSliderStep;
+        }
+
+        // ── Sección: Panel Style ──────────────────────────────────────────────
+        y=[self addSection:DAAEStr(@"— PANEL STYLE —",@"— ESTILO PANEL —",@"— KIỂU PANEL —") y:y];
+
+        // Preview del panel actual — un rectángulo que muestra cómo se ve
+        // la combinación actual de gradiente + blur
+        {
+            UIView *preview = [[UIView alloc] initWithFrame:CGRectMake(0,y,w,72)];
+            preview.layer.cornerRadius = RadiusRow();
+            preview.clipsToBounds = YES;
+
+            // Fondo blur del preview
+            UIVisualEffectView *pvBlur = [[UIVisualEffectView alloc] initWithEffect:
+                [UIBlurEffect effectWithStyle:DAAEBlurStyle()]];
+            pvBlur.frame = preview.bounds;
+            [preview addSubview:pvBlur];
+
+            // Gradiente del preview
+            NSInteger curPreset = DAAEGradientPreset();
+            UIColor *gc1 = nil, *gc2 = nil;
+            DAAEGradientColors(curPreset, &gc1, &gc2);
+            if (gc1 && gc2) {
+                CAGradientLayer *pvGrad = [CAGradientLayer layer];
+                pvGrad.frame = preview.bounds;
+                pvGrad.colors = @[(id)gc1.CGColor, (id)gc2.CGColor];
+                pvGrad.startPoint = CGPointMake(0, 0);
+                pvGrad.endPoint = CGPointMake(1, 1);
+                pvGrad.cornerRadius = RadiusRow();
+                [preview.layer insertSublayer:pvGrad atIndex:0];
+            }
+
+            // Texto de preview centrado
+            UILabel *pvLbl = [[UILabel alloc] initWithFrame:preview.bounds];
+            pvLbl.text = DAAEStr(@"Panel Preview", @"Vista Previa", @"Xem Trước");
+            pvLbl.textAlignment = NSTextAlignmentCenter;
+            pvLbl.textColor = LblMain();
+            pvLbl.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+            [preview addSubview:pvLbl];
+            [self.scroll addSubview:preview];
+            y += 80;
+        }
+
+        // Grid de presets de gradiente — 7 celdas en 2 filas
+        {
+            NSArray *presetNames = @[
+                DAAEStr(@"None",   @"Ninguno", @"Không"),
+                DAAEStr(@"Blue",   @"Azul",    @"Xanh"),
+                DAAEStr(@"Purple", @"Morado",  @"Tím"),
+                DAAEStr(@"Gold",   @"Dorado",  @"Vàng"),
+                DAAEStr(@"Green",  @"Verde",   @"Xanh lá"),
+                DAAEStr(@"Red",    @"Rojo",    @"Đỏ"),
+                DAAEStr(@"Dark",   @"Oscuro",  @"Tối"),
+            ];
+            NSInteger nPresets = (NSInteger)presetNames.count; // 7
+            NSInteger cols = 4;
+            NSInteger rows = (nPresets + cols - 1) / cols;
+            CGFloat cellW = (w - (cols-1)*8) / (CGFloat)cols;
+            CGFloat cellH = 52.0;
+            NSInteger curPreset = DAAEGradientPreset();
+            __weak _0xDEADBEEE *wgrid = self;
+
+            for (NSInteger pi = 0; pi < nPresets; pi++) {
+                NSInteger col = pi % cols;
+                NSInteger row = pi / cols;
+                CGFloat cx = col * (cellW + 8);
+                CGFloat cy = y + row * (cellH + 8);
+
+                UIButton *cell = [UIButton buttonWithType:UIButtonTypeCustom];
+                cell.frame = CGRectMake(cx, cy, cellW, cellH);
+                cell.layer.cornerRadius = RadiusChip();
+                cell.layer.borderWidth = (pi == curPreset) ? 2.0 : 0.6;
+                cell.layer.borderColor = (pi == curPreset)
+                    ? DAAEAccentColor().CGColor
+                    : [UIColor colorWithWhite:DAAEDark()?1:0 alpha:0.15].CGColor;
+                cell.clipsToBounds = YES;
+                cell.tag = 800 + pi;
+
+                // Fondo del chip: blur pequeño simulado con color
+                if (pi == 0) {
+                    // "Ninguno" — solo el RowBG con un ícono
+                    cell.backgroundColor = RowBG();
+                    [cell setImage:SFSym(@"xmark.circle", 16, UIImageSymbolWeightRegular)
+                          forState:UIControlStateNormal];
+                    cell.tintColor = LblDim();
+                } else {
+                    UIColor *gc1 = nil, *gc2 = nil;
+                    DAAEGradientColors(pi, &gc1, &gc2);
+                    if (gc1 && gc2) {
+                        CAGradientLayer *gl = [CAGradientLayer layer];
+                        gl.frame = cell.bounds;
+                        gl.colors = @[(id)gc1.CGColor, (id)gc2.CGColor];
+                        gl.startPoint = CGPointMake(0,0);
+                        gl.endPoint   = CGPointMake(1,1);
+                        [cell.layer insertSublayer:gl atIndex:0];
+                    }
+                }
+
+                UILabel *cellLbl = [[UILabel alloc] initWithFrame:
+                    CGRectMake(0, cellH-20, cellW, 20)];
+                cellLbl.text = presetNames[(NSUInteger)pi];
+                cellLbl.textAlignment = NSTextAlignmentCenter;
+                cellLbl.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
+                // Fondo semitransparente debajo del texto
+                cellLbl.backgroundColor = [UIColor colorWithWhite:0 alpha:0.28];
+                cellLbl.textColor = UIColor.whiteColor;
+                if (pi == 0) {
+                    cellLbl.backgroundColor = UIColor.clearColor;
+                    cellLbl.textColor = LblMain();
+                }
+                [cell addSubview:cellLbl];
+
+                objc_setAssociatedObject(cell, "gradientPresetIdx", @(pi),
+                    OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                [cell addTarget:self action:@selector(gradientPresetTap:)
+                    forControlEvents:UIControlEventTouchUpInside];
+                [self.scroll addSubview:cell];
+            }
+            y += rows * (cellH + 8) + 8;
         }
 
     // ── TAB 3: MISC ───────────────────────────────────────────────────────────
@@ -1124,20 +1328,17 @@ static NSString *TabName(NSInteger i) {
             UIView *tRow = [[UIView alloc] initWithFrame:CGRectMake(0,y,w,kSliderH)];
             tRow.backgroundColor    = RowBG();
             tRow.layer.cornerRadius = RadiusRow();
-
             UILabel *tLbl = [[UILabel alloc] initWithFrame:CGRectMake(20,9,w-96,22)];
             tLbl.text      = DAAEStr(@"Menu Transparency",@"Transparencia",@"Độ Trong Suốt");
             tLbl.textColor = LblMain();
             tLbl.font      = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
             [tRow addSubview:tLbl];
-
             UILabel *tVal = [[UILabel alloc] initWithFrame:CGRectMake(w-76,9,58,22)];
             tVal.textAlignment = NSTextAlignmentRight;
             tVal.textColor = DAAEAccentColor();
             tVal.font      = [UIFont systemFontOfSize:15 weight:UIFontWeightBold];
             tVal.text = [NSString stringWithFormat:@"%.2f", DAAEPanelAlpha()];
             [tRow addSubview:tVal];
-
             UISlider *tSl = [[UISlider alloc] initWithFrame:CGRectMake(16,40,w-32,24)];
             tSl.minimumValue = 0.40f; tSl.maximumValue = 1.0f;
             tSl.value = (float)DAAEPanelAlpha();
@@ -1154,13 +1355,11 @@ static NSString *TabName(NSInteger i) {
         {
             UIView *sizeRow=[[UIView alloc] initWithFrame:CGRectMake(0,y,w,kSliderH)];
             sizeRow.backgroundColor=RowBG(); sizeRow.layer.cornerRadius=RadiusRow();
-
             UILabel *sizeLbl=[[UILabel alloc] initWithFrame:CGRectMake(20,9,w-130,22)];
             sizeLbl.text=DAAEStr(@"Menu Scale",@"Escala Menú",@"Tỷ Lệ Menu");
             sizeLbl.textColor=LblMain();
             sizeLbl.font=[UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
             [sizeRow addSubview:sizeLbl];
-
             CGFloat curScale=DAAEPanelScale();
             UILabel *sizeVal=[[UILabel alloc] initWithFrame:CGRectMake(w-112,9,56,22)];
             sizeVal.textAlignment=NSTextAlignmentRight;
@@ -1168,13 +1367,11 @@ static NSString *TabName(NSInteger i) {
             sizeVal.font=[UIFont systemFontOfSize:15 weight:UIFontWeightBold];
             sizeVal.text=[NSString stringWithFormat:@"%d%%",(int)round(curScale*100)];
             [sizeRow addSubview:sizeVal];
-
             UIButton *resetBtn=[UIButton buttonWithType:UIButtonTypeSystem];
             resetBtn.frame=CGRectMake(w-50,4,40,34);
             [resetBtn setImage:SFSym(@"arrow.counterclockwise",14,UIImageSymbolWeightSemibold)
                       forState:UIControlStateNormal];
             resetBtn.tintColor=DAAEAccentColor();
-
             UISlider *sizeSl=[[UISlider alloc] initWithFrame:CGRectMake(16,40,w-32,24)];
             sizeSl.minimumValue=0.75f; sizeSl.maximumValue=1.30f;
             sizeSl.value=(float)curScale;
@@ -1334,24 +1531,37 @@ static NSString *TabName(NSInteger i) {
     self.colorTarget=seg.selectedSegmentIndex; [self buildPage];
 }
 
+- (void)gradientPresetTap:(UIButton *)sender {
+    NSNumber *n = objc_getAssociatedObject(sender, "gradientPresetIdx");
+    if (!n) return;
+    NSInteger newPreset = n.integerValue;
+    DAAESetGradientPreset(newPreset);
+    // Actualizar bordes de todos los chips del grid
+    for (NSInteger pi = 0; pi < 7; pi++) {
+        UIButton *chip = (UIButton *)[self.scroll viewWithTag:800+pi];
+        if (!chip) continue;
+        BOOL sel = (pi == newPreset);
+        chip.layer.borderWidth = sel ? 2.0 : 0.6;
+        chip.layer.borderColor = sel
+            ? DAAEAccentColor().CGColor
+            : [UIColor colorWithWhite:DAAEDark()?1:0 alpha:0.15].CGColor;
+    }
+    [self refreshThemeInPlace];
+}
+
 - (void)_colorSliderChanged:(UISlider *)sl {
     NSString *key     = objc_getAssociatedObject(sl, "espKey");
     UILabel  *valLbl  = objc_getAssociatedObject(sl, "valLbl");
     UILabel  *swatch  = objc_getAssociatedObject(sl, "swatchRef");
     NSString *pfx     = objc_getAssociatedObject(sl, "swatchPfx");
-
     if (!swatch) swatch = (UILabel *)[self.scroll viewWithTag:990];
     if (!pfx)    pfx    = (self.colorTarget == 0) ? @"BoxColor" : @"FovColor";
-
     if (key) ESPPrefsSetFloat(key, sl.value);
     if (valLbl) valLbl.text = [NSString stringWithFormat:@"%.0f", (double)sl.value * 100.0];
-
     if (!swatch || !pfx) return;
-
     float r = ESPPrefsFloat([pfx stringByAppendingString:@"R"], 0.26f);
     float g = ESPPrefsFloat([pfx stringByAppendingString:@"G"], 0.78f);
     float b = ESPPrefsFloat([pfx stringByAppendingString:@"B"], 0.90f);
-
     [UIView performWithoutAnimation:^{
         swatch.backgroundColor = [UIColor colorWithRed:r green:g blue:b alpha:1];
         swatch.text = [NSString stringWithFormat:@"#%02X%02X%02X",
@@ -1359,7 +1569,6 @@ static NSString *TabName(NSInteger i) {
         CGFloat lum = r*0.299f + g*0.587f + b*0.114f;
         swatch.textColor = lum > 0.6f ? UIColor.blackColor : UIColor.whiteColor;
     }];
-
     ESPSyncFromPrefs();
 }
 
@@ -1459,6 +1668,9 @@ static NSString *TabName(NSInteger i) {
     CGRect f=self.panel.frame;
     f.origin=CGPointMake(self.panelOrigin.x+d.x,self.panelOrigin.y+d.y);
     self.panel.frame=f; self.blurBG.frame=f;
+    if (self.gradientLayer) {
+        self.gradientLayer.frame = self.panel.bounds;
+    }
     [self viewDidLayoutSubviews];
 }
 -(BOOL)gestureRecognizer:(UIGestureRecognizer *)g shouldReceiveTouch:(UITouch *)t {
@@ -1479,7 +1691,6 @@ static NSString *TabName(NSInteger i) {
         self.scrollOrigin=self.scroll.contentOffset.y;
         self.scrolling=NO; self.activeControl=nil;
         CGPoint local=[self.panel convertPoint:point fromView:self.view];
-        // Arrastrable: sidebar y la franja del header (sin tocar los 2 botones circulares)
         self.dragging=(local.x<kSidebarW+2)||
                       (local.y<kHeaderH&&local.x<self.panel.bounds.size.width-108);
         if (self.dragging) return YES;
@@ -1500,6 +1711,7 @@ static NSString *TabName(NSInteger i) {
             CGRect f=self.panel.frame;
             f.origin=CGPointMake(self.panelOrigin.x+dx,self.panelOrigin.y+dy);
             self.panel.frame=f; self.blurBG.frame=f;
+            if (self.gradientLayer) self.gradientLayer.frame=self.panel.bounds;
             [self viewDidLayoutSubviews];
         } else if (fabs(dy)>6||self.scrolling) {
             self.scrolling=YES;
