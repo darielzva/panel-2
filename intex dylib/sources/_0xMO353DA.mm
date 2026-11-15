@@ -1838,4 +1838,10 @@ static NSString *TabName(NSInteger i) {
 }
 
 @end
+
+// Alias de compatibilidad — _0xMU2872_.mm referencia _0xDEADBEEE directamente.
+// La IA renombró la clase a _0xMO353DA; este alias expone el símbolo viejo
+// sin tocar ningun otro archivo del proyecto.
+@compatibility_alias _0xDEADBEEE _0xMO353DA;
+
 // BUILD OK
