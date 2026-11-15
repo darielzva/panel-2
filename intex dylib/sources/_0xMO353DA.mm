@@ -10,13 +10,6 @@
 #import "UIView+SecureView.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FORWARD DECLARATIONS
-// ─────────────────────────────────────────────────────────────────────────────
-@interface _0xDEADBEEE : UIViewController
-@property (nonatomic, copy) void (^onCloseBlock)(void);
-- (BOOL)_0xF010:(CGPoint)point phase:(NSInteger)phase pointerId:(NSInteger)pointerId;
-@end
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SF SYMBOL HELPER
 // ─────────────────────────────────────────────────────────────────────────────
