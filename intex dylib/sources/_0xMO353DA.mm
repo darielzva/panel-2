@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // FORWARD DECLARATIONS
 // ─────────────────────────────────────────────────────────────────────────────
-@interface _0xMO353DA : UIViewController
+@interface _0xDEADBEEE : UIViewController
 @property (nonatomic, copy) void (^onCloseBlock)(void);
 - (BOOL)_0xF010:(CGPoint)point phase:(NSInteger)phase pointerId:(NSInteger)pointerId;
 @end
@@ -584,7 +584,7 @@ static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-@interface _0xMO353DA () <UIGestureRecognizerDelegate>
+@interface _0xDEADBEEE () <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UIVisualEffectView *blurBG;
 @property (nonatomic, strong) CAGradientLayer    *gradientLayer;
 @property (nonatomic, strong) UIView             *panel;
@@ -606,7 +606,7 @@ static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
 @property (nonatomic, strong) UIControl *activeControl;
 @end
 
-@implementation _0xMO353DA
+@implementation _0xDEADBEEE
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DEFAULTS
@@ -653,7 +653,7 @@ static CGFloat AddWarningLabel(NSString *text, NSArray<NSString *> *highlights,
     self.controls = [NSMutableArray array];
     self.view.backgroundColor = UIColor.clearColor;
 
-    __weak _0xMO353DA *ws = self;
+    __weak _0xDEADBEEE *ws = self;
     self.spinStatusTimer = [NSTimer scheduledTimerWithTimeInterval:0.5 repeats:YES
         block:^(NSTimer *_){ [ws updateSpinStatus]; }];
 
@@ -939,7 +939,7 @@ static NSString *TabName(NSInteger i) {
                                             width:w];
     row.frame = CGRectMake(0, y, w, kRowH);
     objc_setAssociatedObject(row, "espKey", key, OBJC_ASSOCIATION_COPY_NONATOMIC);
-    __weak DAAERow *wrow = row; __weak _0xMO353DA *ws = self;
+    __weak DAAERow *wrow = row; __weak _0xDEADBEEE *ws = self;
     row.onChanged = ^(BOOL on) {
         NSString *k = objc_getAssociatedObject(wrow, "espKey");
         ESPPrefsSetBool(k, on);
@@ -1094,7 +1094,7 @@ static NSString *TabName(NSInteger i) {
             DAAEStr(@"detections",@"detecciones",@"phát hiện")
         ], self.scroll, w, y);
 
-        __weak _0xMO353DA *wa = self;
+        __weak _0xDEADBEEE *wa = self;
         y = [self addCustomToggleEN:@"Aimbot" ES:@"Aimbot" VI:@"Aimbot"
                                  on:AimActive() y:y handler:^(BOOL on) {
             if (on) {
@@ -1220,7 +1220,7 @@ static NSString *TabName(NSInteger i) {
         float def[3] = {0.26f, 0.78f, 0.90f};
 
         __weak UILabel *wSwatch = swatch;
-        __weak _0xMO353DA *wself2 = self;
+        __weak _0xDEADBEEE *wself2 = self;
 
         for (int i = 0; i < 3; i++) {
             NSString *key = [pfx stringByAppendingString:suf[(NSUInteger)i]];
@@ -1264,7 +1264,7 @@ static NSString *TabName(NSInteger i) {
         DAAEPillPicker *bgPicker = [[DAAEPillPicker alloc]
             initWithOptions:bgOpts selected:DAAEBgStyle() width:w];
         bgPicker.frame = CGRectMake(0, y, w, 44);
-        __weak _0xMO353DA *wbg = self;
+        __weak _0xDEADBEEE *wbg = self;
         bgPicker.onSelected = ^(NSInteger idx) {
             DAAESetBgStyle(idx);
             [wbg refreshThemeInPlace];
@@ -1474,7 +1474,7 @@ static NSString *TabName(NSInteger i) {
             DAAEStr(@"Rounded", @"Redondeado", @"Tròn"),
             DAAEStr(@"Square",  @"Cuadrado",   @"Vuông"),
         ];
-        __weak _0xMO353DA *wself = self;
+        __weak _0xDEADBEEE *wself = self;
         DAAEPillPicker *cornerPicker = [[DAAEPillPicker alloc]
             initWithOptions:cornerOpts selected:(DAAESquareCorners() ? 1 : 0) width:w];
         cornerPicker.frame = CGRectMake(0, y, w, 44);
@@ -1838,10 +1838,5 @@ static NSString *TabName(NSInteger i) {
 }
 
 @end
-
-// Alias de compatibilidad — _0xMU2872_.mm referencia _0xDEADBEEE directamente.
-// La IA renombró la clase a _0xMO353DA; este alias expone el símbolo viejo
-// sin tocar ningun otro archivo del proyecto.
-@compatibility_alias _0xDEADBEEE _0xMO353DA;
 
 // BUILD OK
