@@ -814,7 +814,7 @@ static void DAAESecureView(UIView *v) {
     // Drag the menu by the icon column (left edge of the panel)
     UIPanGestureRecognizer *drag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(_dragPanel:)];
     [self.iconColumn addGestureRecognizer:drag];
-    self.scroll.panGestureRecognizer requireGestureRecognizerToFail:drag;
+    [self.scroll.panGestureRecognizer requireGestureRecognizerToFail:drag];
 }
 
 - (void)_dragPanel:(UIPanGestureRecognizer *)g {
