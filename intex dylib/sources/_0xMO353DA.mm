@@ -1,23 +1,30 @@
 //
 //  _0xMO353DA.mm
-//  FLOATING MODERN MENU â€” v4 (build-fixed, compiles clean with -Werror)
+//  FLOATING MODERN MENU â€” v6 (single unified panel, matches reference images)
 //
-//  FULL REDESIGN matching the reference images:
-//    â€¢ Floating translucent panel (UIVisualEffectView) + circular left sidebar
-//    â€¢ LIGHT MODE / DARK MODE only â€” NO accent colors, NO gradients
-//    â€¢ Categories: ESP | AIM | DRAW | TOOLS | SETTINGS
-//    â€¢ "Menu Size" slider = GLOBAL uniform scale of the whole menu
-//      (rootContainer scales as ONE unit, centered, real-time, persistent)
+//  STRUCTURE (as confirmed from the reference images):
+//    â€¢ ONE single translucent rounded panel (not two boxes)
+//    â€¢ Icon column lives INSIDE the panel on the left (transparent, no bg)
+//    â€¢ Bigger circular category icons, compact spacing between them
+//    â€¢ Square-ish panel (balanced width/height, more horizontal)
+//    â€¢ Close = tap OUTSIDE the menu (via the _0xF010 touch hook)
+//    â€¢ Header = category title + moon + sun (no X button)
 //
-//  Build fixes vs v3:
-//    1. @protocol DAAETheming â€” [o applyTheme] now resolves (error line 79)
-//    2. #import <objc/message.h> â€” objc_msgSend declared (error line 93)
-//    3. DAAEOptionRow: property 'selected' renamed to 'checked' â€” no clash
-//       with UIControl.selected (errors 337/371/373)
-//    4. requireGestureRecognizerToFail â€” message syntax, not property
-//    5. __weak __typeof__(self) â€” typeof is invalid in C++ (errors 818/827/846)
-//    6. All static color helpers are 'static inline' â€” no -Wunused-function
-//    7. DAAESlider renamed DAAEThemedSlider (declared before use)
+//  LIGHT MODE / DARK MODE only â€” NO accent colors, NO gradients.
+//  "Menu Size" slider = GLOBAL uniform scale of the whole menu
+//  (rootContainer scales as ONE unit, centered, real-time, persistent).
+//
+//  All previous compile fixes included:
+//    1. @protocol DAAETheming â€” [o applyTheme] resolves
+//    2. #import <objc/message.h> â€” objc_msgSend declared
+//    3. DAAEOptionRow property 'checked' â€” no clash with UIControl.selected
+//    4. requireGestureRecognizerToFail â€” message syntax
+//    5. __weak __typeof__(self) â€” valid in C++/.mm
+//    6. static inline color helpers â€” no -Wunused-function
+//    7. DAAEThemedSlider class name unified
+//    8. fabsf with (float) cast â€” no -Wabsolute-value
+//    9. _0xF010:phase:pointerId: implemented (declared in ModMenuViewController.h)
+//       + closes the menu when the touch is outside the panel
 //
 //  Compatible with existing mod functions and preference keys:
 //    ESPPrefsFloat / ESPPrefsSetFloat / ESPSyncFromPrefs / class _0xDEADBEEE
@@ -42,10 +49,11 @@
 // MARK: 1. Layout constants
 // ---------------------------------------------------------------------------
 
-static CGFloat const kSideW   = 68.0f;   // sidebar width
-static CGFloat const kSidePad = 10.0f;   // outer margin
-static CGFloat const kSideBtn = 46.0f;   // circular nav button size
-static CGFloat const kPanelR  = 30.0f;   // outer panel corner radius
+static CGFloat const kSideW   = 68.0f;   // legacy column width reference
+static CGFloat const kSidePad = 10.0f;   // outer margin of the panel inside root
+static CGFloat const kSideBtn = 54.0f;   // BIG circular nav button (was 46)
+static CGFloat const kIconGap = 12.0f;   // COMPACT vertical gap between icons
+static CGFloat const kPanelR  = 30.0f;   // unified panel corner radius (28-34)
 static CGFloat const kCardR   = 24.0f;   // card corner radius
 static CGFloat const kPad     = 16.0f;   // inner horizontal padding
 static CGFloat const kRowH    = 60.0f;   // standard card height
@@ -55,9 +63,7 @@ static CGFloat const kGap     = 8.0f;    // vertical gap between cards
 
 // GLOBAL UI SCALE ------------------------------------------------------------
 // One variable controls the size of the ENTIRE menu. It is applied ONLY to
-// rootContainer.transform, so every component (panel, sidebar, buttons,
-// icons, texts, cards, switches, sliders, paddings, margins, corner radii)
-// scales together as one unit. Reference: 100% = original size.
+// rootContainer.transform, so every component scales together as one unit.
 static CGFloat gMenuScale = 1.0f;   // user preference (0.7 ... 1.3)
 static CGFloat gEffScale  = 1.0f;   // effective scale (clamped to screen)
 
@@ -95,13 +101,7 @@ static inline UIColor *HexRGB(NSInteger h, CGFloat a) {
 }
 #define GRAY(dk, lt) (gDark ? (dk) : (lt))
 
-// Palettes exactly as specified:
-//   DARK:  panel #242426 (88%), control #303034, selected #414146,
-//          text #F5F5F7, dim #A5A5AA, disabled #68686E, icon #EEEEF0,
-//          border white 10%, separator white 8%
-//   LIGHT: panel #FFFFFF (82%), control #E8E8ED, selected #DCDCE2,
-//          text #171717, dim #77777D, disabled #AAAAAF, icon #292929,
-//          border #D5D5DA, separator #DADAE0
+// Palettes exactly as specified
 static inline UIColor *CPanelBG()  { return GRAY(HexRGB(0x242426, 0.88f), HexRGB(0xFFFFFF, 0.82f)); }
 static inline UIColor *CControl()  { return GRAY(HexRGB(0x303034, 1.0f), HexRGB(0xE8E8ED, 1.0f)); }
 static inline UIColor *CSelected() { return GRAY(HexRGB(0x414146, 1.0f), HexRGB(0xDCDCE2, 1.0f)); }
@@ -114,13 +114,12 @@ static inline UIColor *CBorder()   { return GRAY([[UIColor whiteColor] colorWith
 static inline UIColor *CSep()      { return GRAY([[UIColor whiteColor] colorWithAlphaComponent:0.08f], HexRGB(0xDADAE0, 1.0f)); }
 static inline UIColor *CKnob()     { return GRAY(HexRGB(0x242426, 1.0f), HexRGB(0xFFFFFF, 1.0f)); }
 
-// FIX 1: protocol so the compiler knows an instance method applyTheme exists
+// Protocol so the compiler knows an instance method applyTheme exists
 @protocol DAAETheming
 - (void)applyTheme;
 @end
 
-// Centralized theme registry: every component re-styles itself on theme
-// change WITHOUT rebuilding the whole interface.
+// Centralized theme registry: components restyle themselves without rebuild
 static NSHashTable *gThemed = nil;
 static void DAAEThemeRegister(id obj) {
     if (!gThemed) gThemed = [NSHashTable weakObjectsHashTable];
@@ -139,7 +138,6 @@ static inline UIImage *UISI(NSString *name, NSString *fallback) {
     return i;
 }
 
-// FIX 2: objc/message.h imported above, so objc_msgSend is declared
 static void DAAESecureView(UIView *v) {
     if (!v) return;
     NSArray *names = @[@"makeSecure", @"secureThisView", @"applySecure", @"addSecureOverlay"];
@@ -153,7 +151,8 @@ static void DAAESecureView(UIView *v) {
 // MARK: 4. Base UI classes
 // ---------------------------------------------------------------------------
 
-// Touch pass-through for the area OUTSIDE the panel (game stays playable)
+// Touch pass-through for the area OUTSIDE the panel (game stays playable).
+// The menu itself is closed via the _0xF010 hook when a touch lands outside.
 @interface DAAEPassView : UIView
 @end
 @implementation DAAEPassView
@@ -170,7 +169,6 @@ static void DAAESecureView(UIView *v) {
 - (void)applyTheme { self.textColor = CText(); }
 @end
 
-// FIX 7: named DAAEThemedSlider (was DAAESlider in a broken intermediate build)
 @interface DAAEThemedSlider : UISlider
 @end
 @implementation DAAEThemedSlider
@@ -437,8 +435,7 @@ static void DAAESecureView(UIView *v) {
 }
 @end
 
-// Dropdown selector â€” option name left, current value right, chevron down,
-// expands an inline list of value cards below it (spec, section 5)
+// Dropdown selector â€” option name left, current value right, chevron down
 @interface DAAEPickerRow : UIControl
 @property (nonatomic, copy) void (^onPick)(NSInteger);
 @end
@@ -532,7 +529,7 @@ static void DAAESecureView(UIView *v) {
 }
 @end
 
-// FIX 3: property renamed 'checked' â€” UIControl already has 'selected'
+// Radio option card â€” title left, check circle right
 @interface DAAEOptionRow : UIControl
 @property (nonatomic, assign) BOOL checked;
 @property (nonatomic, copy) void (^onTap)(void);
@@ -615,7 +612,7 @@ static void DAAESecureView(UIView *v) {
 }
 @end
 
-// Circular sidebar navigation button
+// BIG circular sidebar button (inside the unified panel, compact spacing)
 @interface DAAESideBtn : UIControl
 @property (nonatomic, assign) BOOL active;
 @property (nonatomic, copy) void (^onTap)(void);
@@ -638,7 +635,8 @@ static void DAAESecureView(UIView *v) {
 }
 - (void)layoutSubviews {
     [super layoutSubviews];
-    _img.frame = CGRectInset(self.bounds, self.bounds.size.width * 0.26f, self.bounds.size.height * 0.26f);
+    // LARGE icon inside the big circular button
+    _img.frame = CGRectInset(self.bounds, self.bounds.size.width * 0.20f, self.bounds.size.height * 0.20f);
     self.layer.cornerRadius = self.bounds.size.width / 2.0f;
 }
 - (void)_tap {
@@ -660,21 +658,20 @@ static void DAAESecureView(UIView *v) {
 @end
 
 // ---------------------------------------------------------------------------
-// MARK: 7. Main panel class
+// MARK: 7. Main panel class â€” ONE unified translucent panel
 // ---------------------------------------------------------------------------
 
 @interface _0xDEADBEEE ()
 @property (nonatomic, strong) UIView *rootContainer;
-@property (nonatomic, strong) UIVisualEffectView *panelBlur;
+@property (nonatomic, strong) UIVisualEffectView *panelBlur;   // the ONLY panel
 @property (nonatomic, strong) UIView *panel;
-@property (nonatomic, strong) UIView *sidebar;
-@property (nonatomic, strong) UIView *contentArea;
+@property (nonatomic, strong) UIView *iconColumn;              // transparent, inside panel
+@property (nonatomic, strong) UIView *contentArea;             // right of the icons
 @property (nonatomic, strong) UIScrollView *scroll;
 @property (nonatomic, strong) UIView *page;
 @property (nonatomic, strong) UILabel *headerTitle;
 @property (nonatomic, strong) UIControl *btnDark;
 @property (nonatomic, strong) UIControl *btnLight;
-@property (nonatomic, strong) UIControl *btnClose;
 @property (nonatomic, strong) UIView *headerSep;
 @property (nonatomic, strong) NSMutableArray<DAAESideBtn *> *sideBtns;
 @property (nonatomic, assign) NSInteger tab;
@@ -686,7 +683,7 @@ static void DAAESecureView(UIView *v) {
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    // Pass-through layer: only the menu itself receives touches
+    // Pass-through layer: touches outside the panel go to the game
     DAAEPassView *pv = [[DAAEPassView alloc] initWithFrame:self.view.bounds];
     pv.backgroundColor = [UIColor clearColor];
     pv.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -701,13 +698,7 @@ static void DAAESecureView(UIView *v) {
     self.rootContainer.backgroundColor = [UIColor clearColor];
     [self.view addSubview:self.rootContainer];
 
-    // ---- Sidebar (circular buttons) ----
-    self.sidebar = [[UIView alloc] initWithFrame:CGRectZero];
-    self.sidebar.layer.cornerRadius = kPanelR;
-    self.sidebar.layer.borderWidth = 0.5f;
-    [self.rootContainer addSubview:self.sidebar];
-
-    // ---- Main panel with real translucency (UIVisualEffectView blur) ----
+    // ---- THE single unified translucent panel ----
     UIBlurEffect *blur = [UIBlurEffect effectWithStyle:(gDark ? UIBlurEffectStyleSystemMaterialDark
                                                               : UIBlurEffectStyleSystemMaterialLight)];
     self.panelBlur = [[UIVisualEffectView alloc] initWithFrame:CGRectZero];
@@ -717,6 +708,12 @@ static void DAAESecureView(UIView *v) {
     self.panel = self.panelBlur.contentView;
     [self.rootContainer addSubview:self.panelBlur];
 
+    // ---- Icon column (transparent, lives INSIDE the panel) ----
+    self.iconColumn = [[UIView alloc] initWithFrame:CGRectZero];
+    self.iconColumn.backgroundColor = [UIColor clearColor];
+    [self.panel addSubview:self.iconColumn];
+
+    // ---- Content area (right of the icon column) ----
     self.contentArea = [[UIView alloc] initWithFrame:CGRectZero];
     [self.panel addSubview:self.contentArea];
 
@@ -731,7 +728,7 @@ static void DAAESecureView(UIView *v) {
 
     self.sideBtns = [NSMutableArray array];
     [self _buildHeader];
-    [self _buildSidebar];
+    [self _buildIconColumn];
     [self _buildGestures];
     [self _applyThemeAll];
     DAAESecureView(self.view);
@@ -742,7 +739,7 @@ static void DAAESecureView(UIView *v) {
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    // Fade-in (spec: menu appears with fade-in, 0.18â€“0.30 s)
+    // Fade-in (spec: menu appears with fade-in, 0.18-0.30 s)
     self.rootContainer.alpha = 0.0f;
     [UIView animateWithDuration:0.25f animations:^{ self.rootContainer.alpha = 1.0f; }];
 }
@@ -768,13 +765,24 @@ static void DAAESecureView(UIView *v) {
 }
 
 - (void)_buildHeader {
+    // Category title (left of content area)
     UILabel *t = [[UILabel alloc] initWithFrame:CGRectZero];
     t.font = [UIFont systemFontOfSize:18.0f weight:UIFontWeightSemibold];
     t.text = @"ESP";
     _headerTitle = t;
     [self.contentArea addSubview:t];
 
-    // Sun / moon appearance buttons (monochromatic, no accent)
+    // Moon (dark) â€” left of the sun, both on the right of the header
+    UIControl *moon = [[UIControl alloc] initWithFrame:CGRectMake(0, 0, 32, 32)];
+    UIImageView *mi = [[UIImageView alloc] initWithImage:UISI(@"moon", @"moon.fill")];
+    mi.contentMode = UIViewContentModeScaleAspectFit;
+    mi.frame = CGRectInset(moon.bounds, 5, 5);
+    [moon addSubview:mi];
+    [moon addTarget:self action:@selector(_darkTap) forControlEvents:UIControlEventTouchUpInside];
+    _btnDark = moon;
+    [self.contentArea addSubview:moon];
+
+    // Sun (light)
     UIControl *sun = [[UIControl alloc] initWithFrame:CGRectMake(0, 0, 32, 32)];
     UIImageView *si = [[UIImageView alloc] initWithImage:UISI(@"sun.max", @"sun.max.fill")];
     si.contentMode = UIViewContentModeScaleAspectFit;
@@ -784,45 +792,29 @@ static void DAAESecureView(UIView *v) {
     _btnLight = sun;
     [self.contentArea addSubview:sun];
 
-    UIControl *moon = [[UIControl alloc] initWithFrame:CGRectMake(0, 0, 32, 32)];
-    UIImageView *mi = [[UIImageView alloc] initWithImage:UISI(@"moon", @"moon.fill")];
-    mi.contentMode = UIViewContentModeScaleAspectFit;
-    mi.frame = CGRectInset(moon.bounds, 5, 5);
-    [moon addTarget:self action:@selector(_darkTap) forControlEvents:UIControlEventTouchUpInside];
-    _btnDark = moon;
-    [self.contentArea addSubview:moon];
-
-    // Close button (xmark) â€” fades the menu out
-    UIControl *cls = [[UIControl alloc] initWithFrame:CGRectMake(0, 0, 32, 32)];
-    UIImageView *ci = [[UIImageView alloc] initWithImage:UISI(@"xmark", nil)];
-    ci.contentMode = UIViewContentModeScaleAspectFit;
-    ci.frame = CGRectInset(cls.bounds, 7, 7);
-    [cls addSubview:ci];
-    [cls addTarget:self action:@selector(closeMenu) forControlEvents:UIControlEventTouchUpInside];
-    _btnClose = cls;
-    [self.contentArea addSubview:cls];
+    // No close button â€” the menu closes tapping OUTSIDE (via _0xF010)
 
     UIView *sep = [[UIView alloc] initWithFrame:CGRectZero];
     _headerSep = sep;
     [self.contentArea addSubview:sep];
 }
 
-- (void)_buildSidebar {
+- (void)_buildIconColumn {
     NSArray *icons = @[@"eye", @"scope", @"cube", @"wrench.and.screwdriver", @"gearshape"];
     for (NSUInteger i = 0; i < 5; i++) {
         NSInteger idx = (NSInteger)i;
         DAAESideBtn *b = [[DAAESideBtn alloc] initWithFrame:CGRectMake(0, 0, kSideBtn, kSideBtn) icon:icons[i]];
         b.onTap = ^{ [self _selectTab:idx]; };
-        [self.sidebar addSubview:b];
+        [self.iconColumn addSubview:b];
         [self.sideBtns addObject:b];
     }
 }
 
-// FIX 4: requireGestureRecognizerToFail is a method, not an assignable property
 - (void)_buildGestures {
+    // Drag the menu by the icon column (left edge of the panel)
     UIPanGestureRecognizer *drag = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(_dragPanel:)];
-    [self.sidebar addGestureRecognizer:drag];
-    [self.scroll.panGestureRecognizer requireGestureRecognizerToFail:drag];
+    [self.iconColumn addGestureRecognizer:drag];
+    self.scroll.panGestureRecognizer requireGestureRecognizerToFail:drag;
 }
 
 - (void)_dragPanel:(UIPanGestureRecognizer *)g {
@@ -836,7 +828,7 @@ static void DAAESecureView(UIView *v) {
 }
 
 - (void)closeMenu {
-    // Fade-out (spec: disappearance via fade-out, 0.18â€“0.30 s)
+    // Fade-out (spec: disappearance via fade-out, 0.18-0.30 s)
     [UIView animateWithDuration:0.25f animations:^{ self.rootContainer.alpha = 0.0f; }
                      completion:^(BOOL _) { self.view.hidden = YES; }];
 }
@@ -865,7 +857,6 @@ static void DAAESecureView(UIView *v) {
     [UD() synchronize];
     [UIView animateWithDuration:0.25f animations:^{
         DAAEThemeApplyAll(dark);
-        // Swap the blur style so real translucency matches the new theme
         self.panelBlur.effect = [UIBlurEffect effectWithStyle:(dark ? UIBlurEffectStyleSystemMaterialDark
                                                                     : UIBlurEffectStyleSystemMaterialLight)];
         [self _applyThemeAll];
@@ -873,8 +864,6 @@ static void DAAESecureView(UIView *v) {
 }
 
 - (void)_applyThemeAll {
-    self.sidebar.backgroundColor = CPanelBG();
-    self.sidebar.layer.borderColor = CBorder().CGColor;
     self.panelBlur.layer.borderColor = CBorder().CGColor;
     _headerSep.backgroundColor = CSep();
     _headerTitle.textColor = CText();
@@ -882,15 +871,13 @@ static void DAAESecureView(UIView *v) {
     _btnDark.alpha  = gDark ? 1.0f : 0.45f;
     for (UIImageView *iv in _btnLight.subviews) iv.tintColor = gDark ? CIconDim() : CIcon();
     for (UIImageView *iv in _btnDark.subviews)  iv.tintColor = gDark ? CIcon() : CIconDim();
-    for (UIImageView *iv in _btnClose.subviews) iv.tintColor = CIconDim();
 }
 
 - (void)_applyPanelAlpha:(float)a {
-    // Clamp to 0.35â€“1.0 like the old menu
     a = fminf(1.0f, fmaxf(0.35f, a));
     self.panelBlur.alpha = a;
-    self.sidebar.alpha = a;
 }
+
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     CGFloat sw = CGRectGetWidth(self.view.bounds);
@@ -899,30 +886,44 @@ static void DAAESecureView(UIView *v) {
     if (sw == self.lastW) return;
     self.lastW = sw;
 
-    // Base (unscaled) size â€” adapts to available screen space
-    CGFloat pw = MIN(340.0f, sw - 16.0f);
-    CGFloat ph = MIN(460.0f, sh - 24.0f);
+    // ---- SQUARE-ISH panel (balanced width/height, more horizontal) ----
+    // Aim for near-equal proportions, wider than the old 340x460 design.
+    CGFloat maxW = sw - 16.0f;
+    CGFloat maxH = sh - 24.0f;
+    CGFloat pw = MIN(460.0f, maxW);          // wider (was 340)
+    CGFloat ph = MIN(440.0f, maxH);          // shorter (was 460) -> balanced
 
     self.rootContainer.bounds = CGRectMake(0, 0, pw, ph);
     self.rootContainer.center = CGPointMake(sw / 2.0f, sh / 2.0f);
 
-    self.sidebar.frame = CGRectMake(kSidePad, kSidePad, kSideW, ph - kSidePad * 2.0f);
+    // ---- ONE unified panel fills the whole root ----
+    self.panelBlur.frame = CGRectMake(0, 0, pw, ph);
 
-    CGFloat pX = kSidePad * 2.0f + kSideW;
-    self.panelBlur.frame = CGRectMake(pX, kSidePad, pw - pX - kSidePad, ph - kSidePad * 2.0f);
-    self.contentArea.frame = self.panel.bounds;
-    self.scroll.frame = self.contentArea.bounds;
+    // ---- Icon column INSIDE the panel (left, transparent) ----
+    CGFloat colW = kSideBtn + kPad * 2;                        // button + breathing room
+    self.iconColumn.frame = CGRectMake(kPad, kHeadH, colW, ph - kHeadH - kPad);
 
-    _headerTitle.frame = CGRectMake(kPad, (kHeadH - 24.0f) / 2.0f, 110.0f, 24.0f);
-    _btnClose.center  = CGPointMake(self.panel.bounds.size.width - kPad - 16.0f, kHeadH / 2.0f);
-    _btnLight.center = CGPointMake(self.panel.bounds.size.width - kPad - 52.0f, kHeadH / 2.0f);
-    _btnDark.center  = CGPointMake(self.panel.bounds.size.width - kPad - 88.0f, kHeadH / 2.0f);
-    _headerSep.frame = CGRectMake(kPad, kHeadH - 0.5f, self.panel.bounds.size.width - kPad * 2, 1.0f);
-
-    CGFloat step = self.sidebar.bounds.size.height / 5.0f;
+    // Big icons, compact spacing: total height of 5 buttons + 4 gaps,
+    // vertically centered in the available column height.
+    CGFloat totalBtns = kSideBtn * 5.0f + kIconGap * 4.0f;
+    CGFloat startY = kHeadH + (ph - kHeadH - kPad - totalBtns) / 2.0f;
     for (NSUInteger i = 0; i < self.sideBtns.count; i++) {
-        self.sideBtns[i].center = CGPointMake(kSideW / 2.0f, step * i + step / 2.0f);
+        CGFloat cy = startY + (kSideBtn + kIconGap) * (CGFloat)i;
+        self.sideBtns[i].frame = CGRectMake(kPad, cy, kSideBtn, kSideBtn);
     }
+
+    // ---- Content area to the right of the icon column ----
+    CGFloat contX = kPad + colW;
+    self.contentArea.frame = CGRectMake(contX, 0, pw - contX - kPad, ph);
+    self.scroll.frame = CGRectMake(0, kHeadH, self.contentArea.bounds.size.width,
+                                   self.contentArea.bounds.size.height - kHeadH);
+
+    // ---- Header (title left, moon + sun right) ----
+    CGFloat cw = self.contentArea.bounds.size.width;
+    _headerTitle.frame = CGRectMake(kPad, (kHeadH - 24.0f) / 2.0f, 120.0f, 24.0f);
+    _btnLight.center = CGPointMake(cw - kPad - 16.0f, kHeadH / 2.0f);   // sun far right
+    _btnDark.center  = CGPointMake(cw - kPad - 52.0f, kHeadH / 2.0f);   // moon next
+    _headerSep.frame = CGRectMake(kPad, kHeadH - 0.5f, cw - kPad * 2, 1.0f);
 
     [self _applyScale];
     [self _selectTab:0];
@@ -934,7 +935,6 @@ static void DAAESecureView(UIView *v) {
 
 - (void)_applyScale {
     // Clamp the user scale so the scaled menu ALWAYS fits the visible screen
-    // (spec: adapt to available space, never leave the visible bounds).
     CGFloat sw = CGRectGetWidth(self.view.bounds);
     CGFloat sh = CGRectGetHeight(self.view.bounds);
     CGFloat baseW = self.rootContainer.bounds.size.width;
@@ -953,7 +953,6 @@ static void DAAESecureView(UIView *v) {
 }
 
 - (void)_recenter {
-    // Re-center the menu on screen after every scale change.
     self.rootContainer.center = CGPointMake(CGRectGetMidX(self.view.bounds),
                                              CGRectGetMidY(self.view.bounds));
 }
@@ -990,7 +989,6 @@ static void DAAESecureView(UIView *v) {
     [self.page addSubview:s];
 }
 
-// FIX 3 (continued): uses 'checked', not the UIControl 'selected' property
 - (void)_option:(CGFloat)y title:(NSString *)t sel:(BOOL)sel tap:(void (^)(void))tap {
     DAAEOptionRow *o = [[DAAEOptionRow alloc] initWithFrame:CGRectMake(kPad, y, [self _cw], kRowH) title:t];
     o.checked = sel;
@@ -1011,7 +1009,7 @@ static void DAAESecureView(UIView *v) {
 
 - (void)_buildTab:(NSInteger)tab {
     self.page.frame = CGRectMake(0, 0, self.scroll.bounds.size.width, self.scroll.bounds.size.height);
-    CGFloat y = kHeadH + 10.0f;
+    CGFloat y = 10.0f;   // header lives in contentArea, page starts below it
     switch (tab) {
         case 0: y = [self _tabESP:y];   break;
         case 1: y = [self _tabAIM:y];   break;
@@ -1054,7 +1052,6 @@ static void DAAESecureView(UIView *v) {
 
 // ---- TAB 1: AIM ------------------------------------------------------------
 
-// FIX 5: __typeof__ (typeof is invalid in C++ / .mm files)
 - (CGFloat)_tabAIM:(CGFloat)y0 {
     CGFloat y = y0;
     DAAEWarningLabel *warn = [[DAAEWarningLabel alloc] initWithFrame:CGRectMake(kPad, y, [self _cw], 40.0f) title:L(@"Use Aimbot with restraint. Excessive headshots may trigger detections.", @"Usa el aimbot con moderaciÃ³n. Excesivos tiros a la cabeza pueden activar detecciones.", @"DÃ¹ng aimbot cÃ³ chá»«ng má»±c.")];
@@ -1103,7 +1100,6 @@ static void DAAESecureView(UIView *v) {
     CGFloat y = y0;
     [self _section:y title:L(@"ESP COLORS", @"COLORES ESP", @"MÃ€U ESP")]; y += 26.0f;
 
-    // Color target picker
     DAAEPickerRow *ct = [self _picker:y title:L(@"Color Target", @"Objetivo de Color", @"Má»¥c TiÃªu MÃ u")
                                  options:@[L(@"Box", @"Caja", @"Há»™p"), L(@"FOV", @"FOV", @"FOV")]
                                     sel:(NSInteger)PF(@"ColorTarget", 0)];
@@ -1157,7 +1153,7 @@ static void DAAESecureView(UIView *v) {
 - (CGFloat)_tabSETTINGS:(CGFloat)y0 {
     CGFloat y = y0;
 
-    // â€”â€” MENU SIZE: global uniform scale of the WHOLE menu â€”â€”
+    // MENU SIZE: global uniform scale of the WHOLE menu
     [self _section:y title:L(@"MENU SIZE", @"TAMAÃ‘O DEL MENÃš", @"Cá»  MENU")]; y += 26.0f;
     UILabel *sl = [[UILabel alloc] initWithFrame:CGRectMake(kPad, y, [self _cw], 18.0f)];
     sl.font = [UIFont systemFontOfSize:15.5f weight:UIFontWeightMedium];
@@ -1177,7 +1173,7 @@ static void DAAESecureView(UIView *v) {
     scale.thumbTintColor = CKnob();
     y += 28.0f;
 
-    // â€”â€” PRESETS 70% / 80% / 100% / 120% / 130% â€”â€”
+    // PRESETS 70% / 80% / 100% / 120% / 130%
     NSArray *preT = @[@"70%", @"80%", @"100%", @"120%", @"130%"];
     NSArray *preV = @[@0.7f, @0.8f, @1.0f, @1.2f, @1.3f];
     for (NSUInteger i = 0; i < preT.count; i++) {
@@ -1188,7 +1184,7 @@ static void DAAESecureView(UIView *v) {
         y += 46.0f + kGap;
     }
 
-    // â€”â€” TRANSPARENCY (panel opacity, 0.35 â€“ 1.0, live) â€”â€”
+    // TRANSPARENCY (panel opacity, 0.35 - 1.0, live)
     [self _section:y title:L(@"TRANSPARENCY", @"TRANSPARENCIA", @"TRONG SUá»T")]; y += 26.0f;
     DAAESliderRow *alpha = [self _slider:y key:@"PanelAlpha" title:L(@"Panel Opacity", @"Opacidad del Panel", @"Äá»™ Má» Panel") min:0.35f max:1.0f def:0.85f];
     y += kSlideH + kGap;
@@ -1196,15 +1192,14 @@ static void DAAESecureView(UIView *v) {
     alpha.onChanged = ^(float v) {
         ESPPrefsSetFloat(@"PanelAlpha", v);
         ESPSyncFromPrefs();
-        // Live: apply panel/sidebar opacity immediately
         [ws2 _applyPanelAlpha:v];
     };
 
-    // â€”â€” STREAM MODE (AnLive â€” hide menu from recordings) â€”â€”
+    // STREAM MODE (AnLive - hide menu from recordings)
     [self _section:y title:L(@"PRIVACY", @"PRIVACIDAD", @"RIÃŠNG TÆ¯")]; y += 26.0f;
     [self _toggle:y key:@"AnLive" title:L(@"Stream Mode", @"Modo Stream", @"Cháº¿ Äá»™ Stream") def:NO]; y += kRowH + kGap;
 
-    // â€”â€” LANGUAGE â€”â€”
+    // LANGUAGE
     [self _section:y title:L(@"LANGUAGE", @"IDIOMA", @"NGÃ”N NGá»®")]; y += 26.0f;
     NSArray *langT = @[@"English", @"EspaÃ±ol", @"Tiáº¿ng Viá»‡t"];
     for (NSUInteger i = 0; i < 3; i++) {
@@ -1218,7 +1213,7 @@ static void DAAESecureView(UIView *v) {
         y += kRowH + kGap;
     }
 
-    // â€”â€” APPEARANCE (Light / Dark only) â€”â€”
+    // APPEARANCE (Light / Dark only)
     [self _section:y title:L(@"APPEARANCE", @"APARIENCIA", @"GIAO DIá»†N")]; y += 26.0f;
     __weak __typeof__(self) ws = self;
     [self _option:y title:L(@"Light", @"Claro", @"SÃ¡ng") sel:!gDark tap:^{ [ws _setDark:NO]; [ws _selectTab:4]; }];
@@ -1226,7 +1221,7 @@ static void DAAESecureView(UIView *v) {
     [self _option:y title:L(@"Dark", @"Oscuro", @"Tá»‘i") sel:gDark tap:^{ [ws _setDark:YES]; [ws _selectTab:4]; }];
     y += kRowH + kGap;
 
-    // â€”â€” INFO â€”â€”
+    // INFO
     [self _section:y title:L(@"INFO", @"INFO", @"THÃ”NG TIN")]; y += 26.0f;
     [self _info:y title:L(@"Product", @"Producto", @"Sáº£n Pháº©m") value:@"DAAE IOS"]; y += 54.0f;
     [self _info:y title:L(@"Creator", @"Creador", @"TÃ¡c Giáº£") value:@"@didierxit7"]; y += 54.0f;
@@ -1239,14 +1234,18 @@ static void DAAESecureView(UIView *v) {
     [self _menuScaleChanged:s.value];
 }
 
-// Touch routing hook declared in ModMenuViewController.h — the game calls
+// Touch routing hook declared in ModMenuViewController.h â€” the game calls
 // this to know whether a touch lands on the menu (YES = menu consumes it).
+// CLOSE BEHAVIOR: a touch OUTSIDE the panel fades the menu out.
 - (BOOL)_0xF010:(CGPoint)point phase:(NSInteger)phase pointerId:(NSInteger)pointerId {
-    if (self.view.hidden) return NO;              // menu closed → game handles all
+    if (self.view.hidden) return NO;   // already closed -> game handles all
     CGPoint p = [self.view convertPoint:point fromView:nil];
-    return CGRectContainsPoint(self.rootContainer.frame, p);
+    BOOL inside = CGRectContainsPoint(self.rootContainer.frame, p);
+    if (!inside && phase == 0) {       // phase 0 = touch began, outside = close
+        [self closeMenu];
+    }
+    return inside;
 }
-
 
 - (void)dealloc { /* preferences are owned by MizzeMenuPrefs */ }
 
