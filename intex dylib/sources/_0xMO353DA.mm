@@ -1183,7 +1183,8 @@ static void DAAESecureView(UIView *v) {
     for (NSUInteger i = 0; i < preT.count; i++) {
         float v = [preV[i] floatValue];
         __weak __typeof__(self) ws = self;
-        [self _option:y title:preT[i] sel:(fabsf(gMenuScale - v) < 0.001f) tap:^{ [ws _menuScaleChanged:v]; [ws _selectTab:4]; }];
+        BOOL isSel = (fabsf((float)gMenuScale - v) < 0.001f);
+        [self _option:y title:preT[i] sel:isSel tap:^{ [ws _menuScaleChanged:v]; [ws _selectTab:4]; }];
         y += 46.0f + kGap;
     }
 
@@ -1237,6 +1238,15 @@ static void DAAESecureView(UIView *v) {
 - (void)_scaleChanged:(UISlider *)s {
     [self _menuScaleChanged:s.value];
 }
+
+// Touch routing hook declared in ModMenuViewController.h — the game calls
+// this to know whether a touch lands on the menu (YES = menu consumes it).
+- (BOOL)_0xF010:(CGPoint)point phase:(NSInteger)phase pointerId:(NSInteger)pointerId {
+    if (self.view.hidden) return NO;              // menu closed → game handles all
+    CGPoint p = [self.view convertPoint:point fromView:nil];
+    return CGRectContainsPoint(self.rootContainer.frame, p);
+}
+
 
 - (void)dealloc { /* preferences are owned by MizzeMenuPrefs */ }
 
