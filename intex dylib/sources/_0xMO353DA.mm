@@ -28,8 +28,8 @@ static UIImage *MZSym(NSString *name, CGFloat pts, UIImageSymbolWeight w) {
 // ─────────────────────────────────────────────────────────────────────────────
 // MARK: — Dimensiones BASE (a escala 1×)
 // ─────────────────────────────────────────────────────────────────────────────
-static const CGFloat kBasePanelW  = 310.0;
-static const CGFloat kBasePanelH  = 420.0;
+static const CGFloat kBasePanelW  = 360.0;
+static const CGFloat kBasePanelH  = 380.0;
 static const CGFloat kBaseSidebarW= 64.0;
 static const CGFloat kBaseHeaderH = 56.0;
 static const CGFloat kBaseRowH    = 56.0;
@@ -39,7 +39,7 @@ static const CGFloat kBaseSliderSt= 74.0;
 static const CGFloat kBaseSectionH= 28.0;
 static const CGFloat kBasePad     = 12.0;
 static const CGFloat kBaseRadPanel= 26.0;
-static const CGFloat kBaseRadRow  = 20.0;
+static const CGFloat kBaseRadRow  = 13.0;
 static const CGFloat kBaseRadSb   = 22.0;
 static const CGFloat kBaseSbD     = 46.0;
 static const CGFloat kBaseSbGap   = 10.0;
@@ -124,8 +124,8 @@ static UIColor *MZSbBtnBG(void)   { // botón sidebar inactivo
 }
 static UIColor *MZSbBtnSel(void)  { // botón sidebar activo
     return MZDark()
-        ? [UIColor colorWithWhite:1 alpha:0.18]
-        : [UIColor colorWithWhite:0 alpha:0.14];
+        ? [UIColor colorWithWhite:1 alpha:0.44]
+        : [UIColor colorWithWhite:0 alpha:0.38];
 }
 static UIColor *MZTxtMain(void) {
     return MZDark() ? [UIColor colorWithWhite:0.95 alpha:1] : [UIColor colorWithWhite:0.08 alpha:1];
@@ -188,30 +188,36 @@ static float AimRaw(void)    { return ESPPrefsFloat(@"AimType", -1); }
 static BOOL  AimActive(void) { return AimRaw() >= 0; }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MARK: — MZSwitch — interruptor cápsula monocromático
+// MARK: — MZSwitch — círculo con checkmark (referencia visual)
+// ON  → círculo relleno (blanco en dark, negro en light) + ✓ contrastante
+// OFF → círculo vacío con borde sutil
 // ─────────────────────────────────────────────────────────────────────────────
 @interface MZSwitch : UIControl
 @property (nonatomic, assign) BOOL on;
 - (void)setOn:(BOOL)on animated:(BOOL)anim;
 - (void)refreshTheme;
 @end
-@implementation MZSwitch { UIView *_track; UIView *_thumb; }
+@implementation MZSwitch { UIView *_circle; UIImageView *_check; }
 - (instancetype)initWithFrame:(CGRect)f {
     if ((self=[super initWithFrame:f])) {
-        _track = [[UIView alloc] initWithFrame:self.bounds];
-        _track.layer.cornerRadius = f.size.height / 2.0;
-        _track.userInteractionEnabled = NO;
-        [self addSubview:_track];
-        CGFloat d = f.size.height - 6;
-        _thumb = [[UIView alloc] initWithFrame:CGRectMake(3,3,d,d)];
-        _thumb.layer.cornerRadius = d/2.0;
-        _thumb.backgroundColor = UIColor.whiteColor;
-        _thumb.userInteractionEnabled = NO;
-        _thumb.layer.shadowColor   = UIColor.blackColor.CGColor;
-        _thumb.layer.shadowOffset  = CGSizeMake(0,1);
-        _thumb.layer.shadowRadius  = 2;
-        _thumb.layer.shadowOpacity = 0.22;
-        [self addSubview:_thumb];
+        CGFloat d = MIN(f.size.width, f.size.height);
+        _circle = [[UIView alloc] initWithFrame:CGRectMake(0,0,d,d)];
+        _circle.layer.cornerRadius = d/2.0;
+        _circle.clipsToBounds = YES;
+        _circle.userInteractionEnabled = NO;
+        [self addSubview:_circle];
+
+        CGFloat ichk = d * 0.52;
+        _check = [[UIImageView alloc] initWithImage:
+            [UIImage systemImageNamed:@"checkmark"
+                    withConfiguration:[UIImageSymbolConfiguration
+                        configurationWithPointSize:ichk * 0.7
+                                           weight:UIImageSymbolWeightSemibold]]];
+        _check.contentMode = UIViewContentModeCenter;
+        _check.frame = CGRectMake((d-ichk)/2.0, (d-ichk)/2.0, ichk, ichk);
+        _check.userInteractionEnabled = NO;
+        [self addSubview:_check];
+
         [self setOn:NO animated:NO];
         [self addTarget:self action:@selector(_tap) forControlEvents:UIControlEventTouchUpInside];
     }
@@ -220,16 +226,28 @@ static BOOL  AimActive(void) { return AimRaw() >= 0; }
 - (void)setOn:(BOOL)on { [self setOn:on animated:NO]; }
 - (void)setOn:(BOOL)on animated:(BOOL)anim {
     _on = on;
-    CGFloat w = self.bounds.size.width, d = self.bounds.size.height-6;
-    CGFloat xOn=w-d-3, xOff=3;
-    UIColor *trackClr = on ? MZSwOn() : MZSwTrack();
+    // ON: círculo sólido (blanco/negro) + ✓ contrastante
+    // OFF: círculo transparente con borde + sin ✓
+    UIColor *circleFill = on
+        ? (MZDark() ? [UIColor colorWithWhite:0.95 alpha:1] : [UIColor colorWithWhite:0.12 alpha:1])
+        : UIColor.clearColor;
+    UIColor *checkClr = on
+        ? (MZDark() ? [UIColor colorWithWhite:0.08 alpha:1] : [UIColor colorWithWhite:0.95 alpha:1])
+        : UIColor.clearColor;
+    CGFloat borderW = on ? 0.0 : 1.5;
+    UIColor *borderClr = on
+        ? UIColor.clearColor
+        : (MZDark() ? [UIColor colorWithWhite:1 alpha:0.35] : [UIColor colorWithWhite:0 alpha:0.28]);
+
     void (^upd)(void) = ^{
-        self->_track.backgroundColor = trackClr;
-        CGRect tf = self->_thumb.frame; tf.origin.x = on?xOn:xOff; self->_thumb.frame=tf;
+        self->_circle.backgroundColor   = circleFill;
+        self->_circle.layer.borderWidth  = borderW;
+        self->_circle.layer.borderColor  = borderClr.CGColor;
+        self->_check.tintColor           = checkClr;
+        self->_check.alpha               = on ? 1.0 : 0.0;
     };
-    if (anim) [UIView animateWithDuration:0.22 delay:0
-        usingSpringWithDamping:0.75 initialSpringVelocity:0.6
-        options:UIViewAnimationOptionCurveEaseInOut animations:upd completion:nil];
+    if (anim) [UIView animateWithDuration:0.18 delay:0
+        options:UIViewAnimationOptionCurveEaseOut animations:upd completion:nil];
     else upd();
 }
 - (void)_tap { [self setOn:!_on animated:YES]; [self sendActionsForControlEvents:UIControlEventValueChanged]; }
@@ -259,7 +277,7 @@ static BOOL  AimActive(void) { return AimRaw() >= 0; }
         _lbl.adjustsFontSizeToFitWidth = YES;
         _lbl.minimumScaleFactor = 0.7;
         [self addSubview:_lbl];
-        CGFloat swW=SC(50), swH=SC(30);
+        CGFloat swW=SC(30), swH=SC(30);
         self.sw = [[MZSwitch alloc] initWithFrame:CGRectMake(0,0,swW,swH)];
         [self.sw setOn:on animated:NO];
         [self.sw addTarget:self action:@selector(_changed) forControlEvents:UIControlEventValueChanged];
@@ -731,7 +749,7 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
         CGRectMake(pad+SC(22), 0, cw-pad-SC(22)-(btnD+gap)*2-pad, hdrH)];
     title.tag=502; title.text=MZTabName(self.page);
     title.textColor=MZTxtMain();
-    title.font=[UIFont systemFontOfSize:SC(17) weight:UIFontWeightBold];
+    title.font=[UIFont systemFontOfSize:SC(22) weight:UIFontWeightBold];
     title.adjustsFontSizeToFitWidth=YES; title.minimumScaleFactor=0.75;
     [self.contentArea addSubview:title];
 
@@ -1233,6 +1251,8 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.scroll.frame=CGRectMake(padH,hdrH,caW-padH*2,ph-hdrH-SC(8));
     [self layoutSidebarButtons];
     [self refreshSidebarSelection];
+    // Rebuild content so fonts, row heights, and all SC() values update in real-time
+    [self buildPage];
 }
 - (void)_menuScaleReset:(UIButton *)btn {
     MZSetMenuScale(1.0);
