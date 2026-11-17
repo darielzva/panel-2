@@ -97,9 +97,10 @@ static void MZSetDark(BOOL d) {
 // MARK: — Paleta monocromática (sin ningún color de acento)
 // ─────────────────────────────────────────────────────────────────────────────
 static UIColor *MZPanelBG(void) {
+    // Alpha bajo: el blur de blurBG se ve a través — efecto glass
     return MZDark()
-        ? [UIColor colorWithWhite:0.12 alpha:0.88]
-        : [UIColor colorWithWhite:0.97 alpha:0.90];
+        ? [UIColor colorWithWhite:0.10 alpha:0.40]
+        : [UIColor colorWithWhite:0.97 alpha:0.55];
 }
 static UIColor *MZCtrlBG(void) {
     return MZDark()
@@ -677,12 +678,21 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
 - (void)layoutSidebarButtons {
     CGFloat d=SC(kBaseSbD), gap=SC(kBaseSbGap);
     CGFloat sbH=MAX(self.sidebar.bounds.size.height,200);
-    CGFloat sbW=self.sidebar.bounds.size.width;
-    CGFloat startY=MAX(SC(8),(sbH-(5*d+4*gap))/2.0);
+    CGFloat sbW=MAX(self.sidebar.bounds.size.width,1);
+    CGFloat totalH=5*d+4*gap;
+    // Comprimir gap si no caben los 5 botones sin que el último se corte
+    if (totalH > sbH - SC(16)) {
+        gap = MAX(SC(4), (sbH - SC(16) - 5*d) / 4.0);
+        totalH = 5*d + 4*gap;
+    }
+    CGFloat startY=MAX(SC(8),(sbH-totalH)/2.0);
     for (NSInteger i=0;i<5;i++) {
         UIButton *btn=(UIButton *)[self.sidebar viewWithTag:300+i];
         if (!btn) continue;
-        btn.frame=CGRectMake((sbW-d)/2.0, startY+i*(d+gap), d, d);
+        CGFloat iy=startY+i*(d+gap);
+        // Clamp: nunca salir del borde inferior del sidebar
+        iy=MIN(iy, sbH-d-SC(4));
+        btn.frame=CGRectMake((sbW-d)/2.0, iy, d, d);
         btn.layer.cornerRadius=d/2.0;
     }
 }
@@ -1200,10 +1210,29 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     UILabel *val=objc_getAssociatedObject(sl,"scaleVal");
     MZSetMenuScale(sl.value);
     if (val) val.text=[NSString stringWithFormat:@"%d%%",(int)round(sl.value*100)];
-    // Forzar recálculo centrado completo
-    self.panel.frame=CGRectZero;
-    self.blurBG.frame=CGRectZero;
-    [self viewDidLayoutSubviews];
+    // Recalcular tamaño sin resetear la posición — evita que buildPage
+    // reconstruya el slider y lo snapee a los extremos mientras se arrastra
+    CGRect f=self.panel.frame;
+    CGFloat sw=self.view.bounds.size.width, sh=self.view.bounds.size.height;
+    if (sw<=0) sw=375; if (sh<=0) sh=667;
+    CGFloat pw=MIN(SC(kBasePanelW),sw-16.0); pw=MAX(pw,220);
+    CGFloat ph=MIN(SC(kBasePanelH),sh-16.0); ph=MAX(ph,240);
+    f.size=CGSizeMake(pw,ph);
+    f.origin.x=MAX(4,MIN(f.origin.x,sw-pw-4));
+    f.origin.y=MAX(4,MIN(f.origin.y,sh-ph-4));
+    self.panel.frame=f; self.blurBG.frame=f;
+    self.panel.layer.cornerRadius=SC(kBaseRadPanel);
+    self.blurBG.layer.cornerRadius=SC(kBaseRadPanel);
+    CGFloat sbW=SC(kBaseSidebarW);
+    self.sidebar.frame=CGRectMake(0,0,sbW,ph);
+    UIView *div=[self.panel viewWithTag:99];
+    div.frame=CGRectMake(sbW,SC(10),0.5,ph-SC(20));
+    CGFloat caW=pw-sbW-0.5;
+    self.contentArea.frame=CGRectMake(sbW+0.5,0,caW,ph);
+    CGFloat hdrH=SC(kBaseHeaderH), padH=SC(kBasePad);
+    self.scroll.frame=CGRectMake(padH,hdrH,caW-padH*2,ph-hdrH-SC(8));
+    [self layoutSidebarButtons];
+    [self refreshSidebarSelection];
 }
 - (void)_menuScaleReset:(UIButton *)btn {
     MZSetMenuScale(1.0);
@@ -1211,8 +1240,8 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     UILabel  *val=objc_getAssociatedObject(btn,"sLabel");
     if (sl) sl.value=1.0f;
     if (val) val.text=@"100%";
-    self.panel.frame=CGRectZero;
-    self.blurBG.frame=CGRectZero;
+    // Recalcular sin resetear posición
+    self.panel.frame=CGRectZero; self.blurBG.frame=CGRectZero;
     [self viewDidLayoutSubviews];
 }
 
