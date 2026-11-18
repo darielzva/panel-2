@@ -28,7 +28,7 @@ static UIImage *MZSym(NSString *name, CGFloat pts, UIImageSymbolWeight w) {
 // ─────────────────────────────────────────────────────────────────────────────
 // MARK: — Dimensiones BASE (a escala 1×)
 // ─────────────────────────────────────────────────────────────────────────────
-static const CGFloat kBasePanelW  = 290.0; // panel solo sin sidebar
+static const CGFloat kBasePanelW  = 350.0; // panel completo (sidebar + contenido)
 static const CGFloat kBasePanelH  = 380.0;
 static const CGFloat kBaseSidebarW= 64.0;
 static const CGFloat kBaseHeaderH = 56.0;
@@ -41,10 +41,10 @@ static const CGFloat kBasePad     = 12.0;
 static const CGFloat kBaseRadPanel= 26.0;
 static const CGFloat kBaseRadRow  = 13.0;
 static const CGFloat kBaseRadSb   = 26.0; // radio pill sidebar
-static const CGFloat kBaseSbD     = 48.0; // llena la pill
+static const CGFloat kBaseSbD     = 46.0; // diámetro base; layout lo recalcula por ph
 static const CGFloat kBaseSbGap   = 6.0;
-static const CGFloat kBaseSbExtGap = 8.0;  // gap sidebar<->panel
-static const CGFloat kBaseSbPad    = 8.0;  // padding vertical pill
+// kBaseSbExtGap eliminado — sidebar dentro del panel
+// kBaseSbPad eliminado
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MARK: — Escala global (Menu Size)
@@ -602,23 +602,17 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.panel.clipsToBounds=YES;
     [self.view addSubview:self.panel];
 
-    // — Sidebar: pill glass EXTERNA, independiente del panel —
+    // — Sidebar: franja interna izquierda, mismo glass que el panel —
     self.sidebar=[[UIView alloc] initWithFrame:CGRectZero];
-    self.sidebar.clipsToBounds=YES;
-    self.sidebarBlur=[[UIVisualEffectView alloc]
-        initWithEffect:[UIBlurEffect effectWithStyle:MZBlur()]];
-    self.sidebarBlur.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-    [self.sidebar addSubview:self.sidebarBlur];
-    // Capa de tinte sobre el blur — igual que el panel
-    UIView *sbTint=[[UIView alloc] initWithFrame:CGRectZero];
-    sbTint.tag=97; sbTint.backgroundColor=MZPanelBG();
-    sbTint.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-    [self.sidebar addSubview:sbTint];
-    self.sidebar.layer.borderWidth=0.5;
-    self.sidebar.layer.borderColor=MZBorder().CGColor;
-    [self.view addSubview:self.sidebar]; // va a self.view, NO al panel
+    self.sidebar.backgroundColor=UIColor.clearColor; // el blur del panel la cubre
+    [self.panel addSubview:self.sidebar];
 
-    // — Panel: solo área de contenido —
+    // Divisor vertical sidebar | contenido
+    UIView *div=[[UIView alloc] initWithFrame:CGRectZero];
+    div.tag=99; div.backgroundColor=MZSep();
+    [self.panel addSubview:div];
+
+    // — Contenido: área derecha del panel —
     self.contentArea=[[UIView alloc] initWithFrame:CGRectZero];
     self.contentArea.backgroundColor=UIColor.clearColor;
     [self.panel addSubview:self.contentArea];
@@ -628,7 +622,7 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.scroll.bounces=YES; self.scroll.clipsToBounds=YES;
     [self.contentArea addSubview:self.scroll];
 
-    // Drag en panel y sidebar — ambos mueven el conjunto
+    // Drag desde sidebar y contentArea
     for (UIView *t in @[self.sidebar, self.contentArea]) {
         UIPanGestureRecognizer *pan=[[UIPanGestureRecognizer alloc]
             initWithTarget:self action:@selector(dragPanel:)];
@@ -673,29 +667,19 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.panel.layer.cornerRadius=SC(kBaseRadPanel);
     self.blurBG.layer.cornerRadius=SC(kBaseRadPanel);
 
-    // — Sidebar pill externa: altura ajustada a 5 botones sin espacio sobrante —
-    CGFloat sbD   = SC(kBaseSbD);
-    CGFloat sbPad = SC(kBaseSbPad);
-    CGFloat sbGap = SC(kBaseSbGap);
-    CGFloat sbW   = SC(kBaseSidebarW);
-    CGFloat sbH   = 5*sbD + 4*sbGap + 2*sbPad; // altura exacta
-    CGFloat sbX   = f.origin.x - sbW - SC(kBaseSbExtGap);
-    CGFloat sbY   = f.origin.y + (ph - sbH) / 2.0; // centrada verticalmente
-    sbX = MAX(4, sbX);
-    self.sidebar.frame = CGRectMake(sbX, sbY, sbW, sbH);
-    self.sidebar.layer.cornerRadius = SC(kBaseRadSb);
-    self.sidebarBlur.frame = self.sidebar.bounds;
-    self.sidebarBlur.layer.cornerRadius = SC(kBaseRadSb);
-    self.sidebarBlur.clipsToBounds = YES;
-    self.sidebarBlur.effect = [UIBlurEffect effectWithStyle:MZBlur()];
-    UIView *sbTint = [self.sidebar viewWithTag:97];
-    if (sbTint) { sbTint.frame = self.sidebar.bounds; sbTint.backgroundColor = MZPanelBG(); }
-    self.sidebar.layer.borderColor = MZBorder().CGColor;
+    // — Sidebar interna: franja izquierda, misma altura que el panel —
+    CGFloat sbW = SC(kBaseSidebarW);
+    self.sidebar.frame = CGRectMake(0, 0, sbW, ph);
 
-    // — Contenido del panel ocupa todo el ancho —
-    self.contentArea.frame = CGRectMake(0, 0, pw, ph);
+    // Divisor vertical
+    UIView *div = [self.panel viewWithTag:99];
+    if (div) div.frame = CGRectMake(sbW, SC(10), 0.5, ph - SC(20));
+
+    // Contenido: todo el ancho excepto la sidebar
+    CGFloat caX = sbW + 0.5, caW = pw - caX;
+    self.contentArea.frame = CGRectMake(caX, 0, caW, ph);
     CGFloat hdrH = SC(kBaseHeaderH), padH = SC(kBasePad);
-    self.scroll.frame = CGRectMake(padH, hdrH, pw-padH*2, ph-hdrH-SC(8));
+    self.scroll.frame = CGRectMake(padH, hdrH, caW - padH*2, ph - hdrH - SC(8));
 
     [self layoutSidebarButtons];
     if (fabs(self.builtWidth-self.scroll.bounds.size.width)>1.0) [self buildPage];
@@ -721,17 +705,21 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     [self refreshSidebarSelection];
 }
 - (void)layoutSidebarButtons {
-    // Altura de la pill = exactamente 5 botones + gaps + padding — sin espacio sobrante
-    CGFloat d    = SC(kBaseSbD);
-    CGFloat gap  = SC(kBaseSbGap);
-    CGFloat pad  = SC(kBaseSbPad);
-    CGFloat sbW  = MAX(self.sidebar.bounds.size.width, 1);
-    CGFloat startY = pad; // empieza justo después del padding superior
+    // Diámetro calculado para que los 5 botones llenen ph exactamente
+    // sin espacio sobrante. gap fijo SC(8), d resuelto de: 5d + 4gap = ph
+    CGFloat sbH = MAX(self.sidebar.bounds.size.height, 200);
+    CGFloat sbW = MAX(self.sidebar.bounds.size.width, 1);
+    CGFloat gap = SC(kBaseSbGap);
+    CGFloat d   = (sbH - 4.0*gap) / 5.0; // llena siempre, a cualquier escala
+    d = MAX(d, SC(28)); // mínimo razonable
     for (NSInteger i=0;i<5;i++) {
         UIButton *btn=(UIButton *)[self.sidebar viewWithTag:300+i];
         if (!btn) continue;
-        btn.frame=CGRectMake((sbW-d)/2.0, startY+i*(d+gap), d, d);
+        btn.frame=CGRectMake((sbW-d)/2.0, i*(d+gap), d, d);
         btn.layer.cornerRadius=d/2.0;
+        // Actualizar tamaño de icono proporcional al botón
+        [btn setImage:MZSym(MZTabIcons()[(NSUInteger)i], d*0.42,
+            UIImageSymbolWeightMedium) forState:UIControlStateNormal];
     }
 }
 - (void)refreshSidebarSelection {
@@ -861,11 +849,8 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.panel.layer.borderColor=MZBorder().CGColor;
     self.blurBG.effect=[UIBlurEffect effectWithStyle:MZBlur()];
     self.blurBG.layer.cornerRadius=SC(kBaseRadPanel);
-    // Refresh sidebar blur/tint
-    self.sidebarBlur.effect=[UIBlurEffect effectWithStyle:MZBlur()];
-    UIView *sbTintR=[self.sidebar viewWithTag:97];
-    if (sbTintR) sbTintR.backgroundColor=MZPanelBG();
-    self.sidebar.layer.borderColor=MZBorder().CGColor;
+    UIView *div9=[self.panel viewWithTag:99];
+    if (div9) div9.backgroundColor=MZSep();
     [self buildSidebar];
     [self buildPage];
 }
@@ -1259,21 +1244,7 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.contentArea.frame=CGRectMake(0,0,pw,ph);
     CGFloat hdrH=SC(kBaseHeaderH), padH=SC(kBasePad);
     self.scroll.frame=CGRectMake(padH,hdrH,pw-padH*2,ph-hdrH-SC(8));
-    // Reposicionar sidebar pill externa
-    CGFloat sbD2  = SC(kBaseSbD), sbPad2=SC(kBaseSbPad), sbGap2=SC(kBaseSbGap);
-    CGFloat sbW2  = SC(kBaseSidebarW);
-    CGFloat sbH2  = 5*sbD2+4*sbGap2+2*sbPad2;
-    CGRect  pf2   = self.panel.frame;
-    CGFloat sbX2  = MAX(4, pf2.origin.x - sbW2 - SC(kBaseSbExtGap));
-    CGFloat sbY2  = pf2.origin.y + (pf2.size.height - sbH2) / 2.0;
-    self.sidebar.frame = CGRectMake(sbX2, sbY2, sbW2, sbH2);
-    self.sidebar.layer.cornerRadius = SC(kBaseRadSb);
-    self.sidebarBlur.frame = self.sidebar.bounds;
-    self.sidebarBlur.layer.cornerRadius = SC(kBaseRadSb);
-    self.sidebarBlur.clipsToBounds = YES;
-    self.sidebarBlur.effect = [UIBlurEffect effectWithStyle:MZBlur()];
-    UIView *sbTint2 = [self.sidebar viewWithTag:97];
-    if (sbTint2) sbTint2.frame = self.sidebar.bounds;
+    // Sidebar es interna — viewDidLayoutSubviews la reposiciona sola
     [self layoutSidebarButtons];
     [self refreshSidebarSelection];
     // Rebuild content so fonts, row heights, and all SC() values update in real-time
@@ -1348,11 +1319,7 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     CGRect f=self.panel.frame;
     f.origin=CGPointMake(self.panelOrigin.x+d.x,self.panelOrigin.y+d.y);
     self.panel.frame=f; self.blurBG.frame=f;
-    // Mover sidebar pill en sincronía con el panel
-    CGFloat sbW3=SC(kBaseSidebarW), sbH3=self.sidebar.bounds.size.height;
-    CGFloat sbX3=MAX(4, f.origin.x - sbW3 - SC(kBaseSbExtGap));
-    CGFloat sbY3=f.origin.y + (f.size.height - sbH3) / 2.0;
-    self.sidebar.frame=CGRectMake(sbX3, sbY3, sbW3, sbH3);
+    // Sidebar es interna — se mueve sola con el panel
     [self viewDidLayoutSubviews];
 }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)g shouldReceiveTouch:(UITouch *)t {
