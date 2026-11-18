@@ -36,7 +36,7 @@ static const CGFloat kBaseRowH    = 56.0;
 static const CGFloat kBaseRowStep = 62.0;
 static const CGFloat kBaseSliderH = 68.0;
 static const CGFloat kBaseSliderSt= 74.0;
-static const CGFloat kBaseSectionH= 28.0;
+static const CGFloat kBaseSectionH= 32.0;
 static const CGFloat kBasePad     = 12.0;
 static const CGFloat kBaseRadPanel= 26.0;
 static const CGFloat kBaseRadRow  = 20.0;
@@ -677,18 +677,20 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     [self refreshSidebarSelection];
 }
 - (void)layoutSidebarButtons {
-    CGFloat sbH = MAX(self.sidebar.bounds.size.height, 200);
-    CGFloat sbW = MAX(self.sidebar.bounds.size.width, 1);
+    CGFloat sbH = self.sidebar.bounds.size.height;
+    CGFloat sbW = self.sidebar.bounds.size.width;
+    // Esperar a que el layout esté listo — evita diámetros gigantes en el primer frame
+    if (sbH < 10 || sbW < 10) return;
     CGFloat gap = SC(kBaseSbGap);
-    // Diámetro calculado para que 5 botones + 4 gaps llenen ph exacto
+    // d calculado para llenar ph exacto; cap: nunca más ancho que la sidebar menos padding
     CGFloat d   = (sbH - 4.0*gap) / 5.0;
-    d = MAX(d, SC(28));
+    CGFloat maxD = sbW - SC(12); // nunca desborda la sidebar
+    d = MIN(MAX(d, SC(28)), maxD);
     for (NSInteger i=0;i<5;i++) {
         UIButton *btn=(UIButton *)[self.sidebar viewWithTag:300+i];
         if (!btn) continue;
         btn.frame=CGRectMake((sbW-d)/2.0, i*(d+gap), d, d);
         btn.layer.cornerRadius=d/2.0;
-        // Icono proporcional al diámetro
         [btn setImage:MZSym(MZTabIcons()[(NSUInteger)i], d*0.42,
             UIImageSymbolWeightMedium) forState:UIControlStateNormal];
     }
