@@ -28,8 +28,8 @@ static UIImage *MZSym(NSString *name, CGFloat pts, UIImageSymbolWeight w) {
 // ─────────────────────────────────────────────────────────────────────────────
 // MARK: — Dimensiones BASE (a escala 1×)
 // ─────────────────────────────────────────────────────────────────────────────
-static const CGFloat kBasePanelW  = 350.0; // panel completo (sidebar + contenido)
-static const CGFloat kBasePanelH  = 380.0;
+static const CGFloat kBasePanelW  = 350.0;
+static const CGFloat kBasePanelH  = 390.0;
 static const CGFloat kBaseSidebarW= 64.0;
 static const CGFloat kBaseHeaderH = 56.0;
 static const CGFloat kBaseRowH    = 56.0;
@@ -39,12 +39,10 @@ static const CGFloat kBaseSliderSt= 74.0;
 static const CGFloat kBaseSectionH= 28.0;
 static const CGFloat kBasePad     = 12.0;
 static const CGFloat kBaseRadPanel= 26.0;
-static const CGFloat kBaseRadRow  = 13.0;
-static const CGFloat kBaseRadSb   = 26.0; // radio pill sidebar
-static const CGFloat kBaseSbD     = 46.0; // diámetro base; layout lo recalcula por ph
-static const CGFloat kBaseSbGap   = 6.0;
-// kBaseSbExtGap eliminado — sidebar dentro del panel
-// kBaseSbPad eliminado
+static const CGFloat kBaseRadRow  = 20.0;
+static const CGFloat kBaseRadSb   = 22.0;
+static const CGFloat kBaseSbD     = 46.0;
+static const CGFloat kBaseSbGap   = 10.0;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MARK: — Escala global (Menu Size)
@@ -115,9 +113,10 @@ static UIColor *MZCtrlBGOn(void) {
         : [UIColor colorWithWhite:0 alpha:0.09];
 }
 static UIColor *MZSidebarBG(void) {
+    // Mismo tinte que MZPanelBG + capa ligeramente más oscura para diferenciar la zona
     return MZDark()
-        ? [UIColor colorWithWhite:0 alpha:0.08]
-        : [UIColor colorWithWhite:0 alpha:0.04];
+        ? [UIColor colorWithWhite:0 alpha:0.22]
+        : [UIColor colorWithWhite:0 alpha:0.07];
 }
 static UIColor *MZSbBtnBG(void)   { // botón sidebar inactivo
     return MZDark()
@@ -126,8 +125,8 @@ static UIColor *MZSbBtnBG(void)   { // botón sidebar inactivo
 }
 static UIColor *MZSbBtnSel(void)  { // botón sidebar activo
     return MZDark()
-        ? [UIColor colorWithWhite:1 alpha:0.44]
-        : [UIColor colorWithWhite:0 alpha:0.38];
+        ? [UIColor colorWithWhite:1 alpha:0.42]
+        : [UIColor colorWithWhite:0 alpha:0.36];
 }
 static UIColor *MZTxtMain(void) {
     return MZDark() ? [UIColor colorWithWhite:0.95 alpha:1] : [UIColor colorWithWhite:0.08 alpha:1];
@@ -190,36 +189,30 @@ static float AimRaw(void)    { return ESPPrefsFloat(@"AimType", -1); }
 static BOOL  AimActive(void) { return AimRaw() >= 0; }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MARK: — MZSwitch — círculo con checkmark (referencia visual)
-// ON  → círculo relleno (blanco en dark, negro en light) + ✓ contrastante
-// OFF → círculo vacío con borde sutil
+// MARK: — MZSwitch — interruptor cápsula monocromático
 // ─────────────────────────────────────────────────────────────────────────────
 @interface MZSwitch : UIControl
 @property (nonatomic, assign) BOOL on;
 - (void)setOn:(BOOL)on animated:(BOOL)anim;
 - (void)refreshTheme;
 @end
-@implementation MZSwitch { UIView *_circle; UIImageView *_check; }
+@implementation MZSwitch { UIView *_track; UIView *_thumb; }
 - (instancetype)initWithFrame:(CGRect)f {
     if ((self=[super initWithFrame:f])) {
-        CGFloat d = MIN(f.size.width, f.size.height);
-        _circle = [[UIView alloc] initWithFrame:CGRectMake(0,0,d,d)];
-        _circle.layer.cornerRadius = d/2.0;
-        _circle.clipsToBounds = YES;
-        _circle.userInteractionEnabled = NO;
-        [self addSubview:_circle];
-
-        CGFloat ichk = d * 0.52;
-        _check = [[UIImageView alloc] initWithImage:
-            [UIImage systemImageNamed:@"checkmark"
-                    withConfiguration:[UIImageSymbolConfiguration
-                        configurationWithPointSize:ichk * 0.7
-                                           weight:UIImageSymbolWeightSemibold]]];
-        _check.contentMode = UIViewContentModeCenter;
-        _check.frame = CGRectMake((d-ichk)/2.0, (d-ichk)/2.0, ichk, ichk);
-        _check.userInteractionEnabled = NO;
-        [self addSubview:_check];
-
+        _track = [[UIView alloc] initWithFrame:self.bounds];
+        _track.layer.cornerRadius = f.size.height / 2.0;
+        _track.userInteractionEnabled = NO;
+        [self addSubview:_track];
+        CGFloat d = f.size.height - 6;
+        _thumb = [[UIView alloc] initWithFrame:CGRectMake(3,3,d,d)];
+        _thumb.layer.cornerRadius = d/2.0;
+        _thumb.backgroundColor = UIColor.whiteColor;
+        _thumb.userInteractionEnabled = NO;
+        _thumb.layer.shadowColor   = UIColor.blackColor.CGColor;
+        _thumb.layer.shadowOffset  = CGSizeMake(0,1);
+        _thumb.layer.shadowRadius  = 2;
+        _thumb.layer.shadowOpacity = 0.22;
+        [self addSubview:_thumb];
         [self setOn:NO animated:NO];
         [self addTarget:self action:@selector(_tap) forControlEvents:UIControlEventTouchUpInside];
     }
@@ -228,28 +221,16 @@ static BOOL  AimActive(void) { return AimRaw() >= 0; }
 - (void)setOn:(BOOL)on { [self setOn:on animated:NO]; }
 - (void)setOn:(BOOL)on animated:(BOOL)anim {
     _on = on;
-    // ON: círculo sólido (blanco/negro) + ✓ contrastante
-    // OFF: círculo transparente con borde + sin ✓
-    UIColor *circleFill = on
-        ? (MZDark() ? [UIColor colorWithWhite:0.95 alpha:1] : [UIColor colorWithWhite:0.12 alpha:1])
-        : UIColor.clearColor;
-    UIColor *checkClr = on
-        ? (MZDark() ? [UIColor colorWithWhite:0.08 alpha:1] : [UIColor colorWithWhite:0.95 alpha:1])
-        : UIColor.clearColor;
-    CGFloat borderW = on ? 0.0 : 1.5;
-    UIColor *borderClr = on
-        ? UIColor.clearColor
-        : (MZDark() ? [UIColor colorWithWhite:1 alpha:0.35] : [UIColor colorWithWhite:0 alpha:0.28]);
-
+    CGFloat w = self.bounds.size.width, d = self.bounds.size.height-6;
+    CGFloat xOn=w-d-3, xOff=3;
+    UIColor *trackClr = on ? MZSwOn() : MZSwTrack();
     void (^upd)(void) = ^{
-        self->_circle.backgroundColor   = circleFill;
-        self->_circle.layer.borderWidth  = borderW;
-        self->_circle.layer.borderColor  = borderClr.CGColor;
-        self->_check.tintColor           = checkClr;
-        self->_check.alpha               = on ? 1.0 : 0.0;
+        self->_track.backgroundColor = trackClr;
+        CGRect tf = self->_thumb.frame; tf.origin.x = on?xOn:xOff; self->_thumb.frame=tf;
     };
-    if (anim) [UIView animateWithDuration:0.18 delay:0
-        options:UIViewAnimationOptionCurveEaseOut animations:upd completion:nil];
+    if (anim) [UIView animateWithDuration:0.22 delay:0
+        usingSpringWithDamping:0.75 initialSpringVelocity:0.6
+        options:UIViewAnimationOptionCurveEaseInOut animations:upd completion:nil];
     else upd();
 }
 - (void)_tap { [self setOn:!_on animated:YES]; [self sendActionsForControlEvents:UIControlEventValueChanged]; }
@@ -279,7 +260,7 @@ static BOOL  AimActive(void) { return AimRaw() >= 0; }
         _lbl.adjustsFontSizeToFitWidth = YES;
         _lbl.minimumScaleFactor = 0.7;
         [self addSubview:_lbl];
-        CGFloat swW=SC(30), swH=SC(30);
+        CGFloat swW=SC(50), swH=SC(30);
         self.sw = [[MZSwitch alloc] initWithFrame:CGRectMake(0,0,swW,swH)];
         [self.sw setOn:on animated:NO];
         [self.sw addTarget:self action:@selector(_changed) forControlEvents:UIControlEventValueChanged];
@@ -523,8 +504,7 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
 @interface _0xDEADBEEE () <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UIVisualEffectView *blurBG;
 @property (nonatomic, strong) UIView             *panel;
-@property (nonatomic, strong) UIView             *sidebar;      // pill externa
-@property (nonatomic, strong) UIVisualEffectView *sidebarBlur;  // blur pill
+@property (nonatomic, strong) UIView             *sidebar;
 @property (nonatomic, strong) UIView             *contentArea;
 @property (nonatomic, strong) UIScrollView       *scroll;
 @property (nonatomic, assign) NSInteger  page;
@@ -602,17 +582,14 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.panel.clipsToBounds=YES;
     [self.view addSubview:self.panel];
 
-    // — Sidebar: franja interna izquierda, mismo glass que el panel —
     self.sidebar=[[UIView alloc] initWithFrame:CGRectZero];
-    self.sidebar.backgroundColor=UIColor.clearColor; // el blur del panel la cubre
+    self.sidebar.backgroundColor=MZSidebarBG();
     [self.panel addSubview:self.sidebar];
 
-    // Divisor vertical sidebar | contenido
     UIView *div=[[UIView alloc] initWithFrame:CGRectZero];
     div.tag=99; div.backgroundColor=MZSep();
     [self.panel addSubview:div];
 
-    // — Contenido: área derecha del panel —
     self.contentArea=[[UIView alloc] initWithFrame:CGRectZero];
     self.contentArea.backgroundColor=UIColor.clearColor;
     [self.panel addSubview:self.contentArea];
@@ -622,8 +599,7 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.scroll.bounces=YES; self.scroll.clipsToBounds=YES;
     [self.contentArea addSubview:self.scroll];
 
-    // Drag desde sidebar y contentArea
-    for (UIView *t in @[self.sidebar, self.contentArea]) {
+    for (UIView *t in @[self.sidebar,self.contentArea]) {
         UIPanGestureRecognizer *pan=[[UIPanGestureRecognizer alloc]
             initWithTarget:self action:@selector(dragPanel:)];
         pan.delegate=self; [t addGestureRecognizer:pan];
@@ -667,19 +643,15 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.panel.layer.cornerRadius=SC(kBaseRadPanel);
     self.blurBG.layer.cornerRadius=SC(kBaseRadPanel);
 
-    // — Sidebar interna: franja izquierda, misma altura que el panel —
-    CGFloat sbW = SC(kBaseSidebarW);
-    self.sidebar.frame = CGRectMake(0, 0, sbW, ph);
+    CGFloat sbW=SC(kBaseSidebarW);
+    self.sidebar.frame=CGRectMake(0,0,sbW,ph);
+    UIView *div=[self.panel viewWithTag:99];
+    div.frame=CGRectMake(sbW,SC(10),0.5,ph-SC(20));
 
-    // Divisor vertical
-    UIView *div = [self.panel viewWithTag:99];
-    if (div) div.frame = CGRectMake(sbW, SC(10), 0.5, ph - SC(20));
-
-    // Contenido: todo el ancho excepto la sidebar
-    CGFloat caX = sbW + 0.5, caW = pw - caX;
-    self.contentArea.frame = CGRectMake(caX, 0, caW, ph);
-    CGFloat hdrH = SC(kBaseHeaderH), padH = SC(kBasePad);
-    self.scroll.frame = CGRectMake(padH, hdrH, caW - padH*2, ph - hdrH - SC(8));
+    CGFloat caW=pw-sbW-0.5;
+    self.contentArea.frame=CGRectMake(sbW+0.5,0,caW,ph);
+    CGFloat hdrH=SC(kBaseHeaderH), padH=SC(kBasePad);
+    self.scroll.frame=CGRectMake(padH,hdrH,caW-padH*2,ph-hdrH-SC(8));
 
     [self layoutSidebarButtons];
     if (fabs(self.builtWidth-self.scroll.bounds.size.width)>1.0) [self buildPage];
@@ -696,7 +668,7 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
         btn.tag=300+i;
         btn.layer.cornerRadius=SC(kBaseRadSb);
         btn.clipsToBounds=YES;
-        [btn setImage:MZSym(MZTabIcons()[(NSUInteger)i],SC(22),UIImageSymbolWeightMedium)
+        [btn setImage:MZSym(MZTabIcons()[(NSUInteger)i],SC(18),UIImageSymbolWeightMedium)
              forState:UIControlStateNormal];
         [btn addTarget:self action:@selector(sidebarTap:) forControlEvents:UIControlEventTouchUpInside];
         [self.sidebar addSubview:btn];
@@ -705,19 +677,18 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     [self refreshSidebarSelection];
 }
 - (void)layoutSidebarButtons {
-    // Diámetro calculado para que los 5 botones llenen ph exactamente
-    // sin espacio sobrante. gap fijo SC(8), d resuelto de: 5d + 4gap = ph
     CGFloat sbH = MAX(self.sidebar.bounds.size.height, 200);
     CGFloat sbW = MAX(self.sidebar.bounds.size.width, 1);
     CGFloat gap = SC(kBaseSbGap);
-    CGFloat d   = (sbH - 4.0*gap) / 5.0; // llena siempre, a cualquier escala
-    d = MAX(d, SC(28)); // mínimo razonable
+    // Diámetro calculado para que 5 botones + 4 gaps llenen ph exacto
+    CGFloat d   = (sbH - 4.0*gap) / 5.0;
+    d = MAX(d, SC(28));
     for (NSInteger i=0;i<5;i++) {
         UIButton *btn=(UIButton *)[self.sidebar viewWithTag:300+i];
         if (!btn) continue;
         btn.frame=CGRectMake((sbW-d)/2.0, i*(d+gap), d, d);
         btn.layer.cornerRadius=d/2.0;
-        // Actualizar tamaño de icono proporcional al botón
+        // Icono proporcional al diámetro
         [btn setImage:MZSym(MZTabIcons()[(NSUInteger)i], d*0.42,
             UIImageSymbolWeightMedium) forState:UIControlStateNormal];
     }
@@ -752,36 +723,44 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     CGFloat hdrH=SC(kBaseHeaderH);
     CGFloat btnD=SC(32), pad=SC(10), gap=SC(6);
 
-    // Título tab — grande, sin icono, sin X
+    // Título tab — grande y sin fondo de píldora
     UILabel *title=[[UILabel alloc] initWithFrame:
-        CGRectMake(pad, 0, cw-pad-(btnD+gap)*2-pad, hdrH)];
+        CGRectMake(pad+SC(22), 0, cw-pad-SC(22)-(btnD+gap)*2-pad, hdrH)];
     title.tag=502; title.text=MZTabName(self.page);
     title.textColor=MZTxtMain();
-    title.font=[UIFont systemFontOfSize:SC(22) weight:UIFontWeightBold];
+    title.font=[UIFont systemFontOfSize:SC(17) weight:UIFontWeightBold];
     title.adjustsFontSizeToFitWidth=YES; title.minimumScaleFactor=0.75;
     [self.contentArea addSubview:title];
 
-    // Botón luna (dark) — esquina derecha
-    UIButton *moonBtn=[UIButton buttonWithType:UIButtonTypeSystem];
-    moonBtn.tag=506;
-    moonBtn.frame=CGRectMake(cw-pad-(btnD+gap)*2, (hdrH-btnD)/2.0, btnD, btnD);
-    moonBtn.backgroundColor=MZDark()?MZSbBtnSel():MZCtrlBG();
-    moonBtn.layer.cornerRadius=btnD/2.0; moonBtn.clipsToBounds=YES;
-    [moonBtn setImage:MZSym(@"moon.fill",SC(13),UIImageSymbolWeightSemibold) forState:UIControlStateNormal];
-    moonBtn.tintColor=MZIcoMain();
-    [moonBtn addTarget:self action:@selector(darkModeToggleTap) forControlEvents:UIControlEventTouchUpInside];
-    [self.contentArea addSubview:moonBtn];
+    // Icono a la izquierda del título
+    UIImageView *iv=[[UIImageView alloc]
+        initWithImage:MZSym(MZTabIcons()[(NSUInteger)self.page],SC(14),UIImageSymbolWeightSemibold)];
+    iv.tag=501; iv.tintColor=MZTxtMain();
+    iv.contentMode=UIViewContentModeScaleAspectFit;
+    iv.frame=CGRectMake(pad,SC(2)+(hdrH-SC(16))/2.0,SC(16),SC(16));
+    [self.contentArea addSubview:iv];
 
-    // Botón sol (light)
-    UIButton *sunBtn=[UIButton buttonWithType:UIButtonTypeSystem];
-    sunBtn.tag=505;
-    sunBtn.frame=CGRectMake(cw-pad-btnD, (hdrH-btnD)/2.0, btnD, btnD);
-    sunBtn.backgroundColor=!MZDark()?MZSbBtnSel():MZCtrlBG();
-    sunBtn.layer.cornerRadius=btnD/2.0; sunBtn.clipsToBounds=YES;
-    [sunBtn setImage:MZSym(@"sun.max.fill",SC(13),UIImageSymbolWeightSemibold) forState:UIControlStateNormal];
-    sunBtn.tintColor=MZIcoMain();
-    [sunBtn addTarget:self action:@selector(darkModeToggleTap) forControlEvents:UIControlEventTouchUpInside];
-    [self.contentArea addSubview:sunBtn];
+    // Botón luna/sol
+    UIButton *darkBtn=[UIButton buttonWithType:UIButtonTypeSystem];
+    darkBtn.tag=505;
+    darkBtn.frame=CGRectMake(cw-pad-(btnD+gap)*2, (hdrH-btnD)/2.0, btnD, btnD);
+    darkBtn.backgroundColor=MZCtrlBG();
+    darkBtn.layer.cornerRadius=btnD/2.0; darkBtn.clipsToBounds=YES;
+    NSString *dIco=MZDark()?@"sun.max.fill":@"moon.fill";
+    [darkBtn setImage:MZSym(dIco,SC(13),UIImageSymbolWeightSemibold) forState:UIControlStateNormal];
+    darkBtn.tintColor=MZIcoMain();
+    [darkBtn addTarget:self action:@selector(darkModeToggleTap) forControlEvents:UIControlEventTouchUpInside];
+    [self.contentArea addSubview:darkBtn];
+
+    // Botón cerrar
+    UIButton *close=[UIButton buttonWithType:UIButtonTypeSystem];
+    close.tag=503; close.frame=CGRectMake(cw-pad-btnD,(hdrH-btnD)/2.0,btnD,btnD);
+    close.backgroundColor=MZCtrlBG();
+    close.layer.cornerRadius=btnD/2.0; close.clipsToBounds=YES;
+    [close setImage:MZSym(@"xmark",SC(12),UIImageSymbolWeightBold) forState:UIControlStateNormal];
+    close.tintColor=MZIcoDim();
+    [close addTarget:self action:@selector(closeMenu) forControlEvents:UIControlEventTouchUpInside];
+    [self.contentArea addSubview:close];
 
     // Separador
     UIView *sep=[[UIView alloc] initWithFrame:CGRectMake(0,hdrH-0.5,cw,0.5)];
@@ -821,9 +800,9 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
 - (CGFloat)addSection:(NSString *)title y:(CGFloat)y {
     NSString *t=[[title stringByReplacingOccurrencesOfString:@"—" withString:@""]
         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet].uppercaseString;
-    UILabel *l=[[UILabel alloc] initWithFrame:CGRectMake(SC(6),y+SC(4),[self contentWidth]-SC(12),SC(16))];
+    UILabel *l=[[UILabel alloc] initWithFrame:CGRectMake(SC(6),y+SC(4),[self contentWidth]-SC(12),SC(20))];
     l.text=t; l.textColor=MZTxtDim();
-    l.font=[UIFont systemFontOfSize:SC(11) weight:UIFontWeightSemibold];
+    l.font=[UIFont systemFontOfSize:SC(13) weight:UIFontWeightSemibold];
     [self.scroll addSubview:l];
     return y+SC(kBaseSectionH);
 }
@@ -849,8 +828,8 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.panel.layer.borderColor=MZBorder().CGColor;
     self.blurBG.effect=[UIBlurEffect effectWithStyle:MZBlur()];
     self.blurBG.layer.cornerRadius=SC(kBaseRadPanel);
-    UIView *div9=[self.panel viewWithTag:99];
-    if (div9) div9.backgroundColor=MZSep();
+    self.sidebar.backgroundColor=MZSidebarBG();
+    UIView *div=[self.panel viewWithTag:99]; div.backgroundColor=MZSep();
     [self buildSidebar];
     [self buildPage];
 }
@@ -1241,14 +1220,16 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     self.panel.frame=f; self.blurBG.frame=f;
     self.panel.layer.cornerRadius=SC(kBaseRadPanel);
     self.blurBG.layer.cornerRadius=SC(kBaseRadPanel);
-    self.contentArea.frame=CGRectMake(0,0,pw,ph);
+    CGFloat sbW=SC(kBaseSidebarW);
+    self.sidebar.frame=CGRectMake(0,0,sbW,ph);
+    UIView *div=[self.panel viewWithTag:99];
+    div.frame=CGRectMake(sbW,SC(10),0.5,ph-SC(20));
+    CGFloat caW=pw-sbW-0.5;
+    self.contentArea.frame=CGRectMake(sbW+0.5,0,caW,ph);
     CGFloat hdrH=SC(kBaseHeaderH), padH=SC(kBasePad);
-    self.scroll.frame=CGRectMake(padH,hdrH,pw-padH*2,ph-hdrH-SC(8));
-    // Sidebar es interna — viewDidLayoutSubviews la reposiciona sola
+    self.scroll.frame=CGRectMake(padH,hdrH,caW-padH*2,ph-hdrH-SC(8));
     [self layoutSidebarButtons];
     [self refreshSidebarSelection];
-    // Rebuild content so fonts, row heights, and all SC() values update in real-time
-    [self buildPage];
 }
 - (void)_menuScaleReset:(UIButton *)btn {
     MZSetMenuScale(1.0);
@@ -1319,7 +1300,6 @@ static CGFloat MZAddWarn(NSString *text, NSArray<NSString*> *hl,
     CGRect f=self.panel.frame;
     f.origin=CGPointMake(self.panelOrigin.x+d.x,self.panelOrigin.y+d.y);
     self.panel.frame=f; self.blurBG.frame=f;
-    // Sidebar es interna — se mueve sola con el panel
     [self viewDidLayoutSubviews];
 }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)g shouldReceiveTouch:(UITouch *)t {
